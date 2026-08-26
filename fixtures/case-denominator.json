@@ -1,0 +1,324 @@
+{
+  "claim": "China is the world's biggest polluter",
+  "turns": [
+    {
+      "conversation_id": "01f1a12173801783abef96df2e3f4094",
+      "message_id": "01f1a12173951478bd431b207f700c7a",
+      "question": "China is the world's biggest polluter",
+      "status": "COMPLETED",
+      "attachment_id": "01f1a121771b183780cedfaedf832aa6",
+      "sql": "WITH latest_year AS (\n  SELECT MAX(`year`) AS max_year FROM `workspace`.`prove_it`.`emissions`\n), ranked_countries AS (\n  SELECT \n    `country`,\n    `co2`,\n    `year`,\n    RANK() OVER (ORDER BY `co2` DESC) AS rank\n  FROM `workspace`.`prove_it`.`emissions`\n  WHERE `year` = (SELECT max_year FROM latest_year)\n)\nSELECT `country`, `co2`, `year`\nFROM ranked_countries\nWHERE rank <= 10\nORDER BY rank;",
+      "description": "You want to see the top 10 countries ranked by their total CO2 emissions for the most recent year available in the data.",
+      "text": "Would you prefer to see the top 10 countries ranked by CO2 emissions per person instead of total emissions?",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see the top 10 countries ranked by their total CO2 emissions for the most recent year available in the data."
+        },
+        {
+          "kind": "UNDERSTANDING",
+          "content": "- biggest polluter: The term 'biggest polluter' is interpreted as the countries with the highest total CO2 emissions, not per capita emissions. An alternative interpretation could be ranking by CO2 emissions per person, which would yield a different list."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.emissions"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Identify the most recent year in the emissions data.\n- Rank countries by their total CO2 emissions for that year in descending order.\n- Select the top 10 countries based on their CO2 emissions for that year.\n- Return the country name, total CO2 emissions, and the year for these top 10 countries, ordered by their rank."
+        }
+      ],
+      "timeline": [
+        [
+          "ASKING_AI",
+          0.625
+        ],
+        [
+          "ASKING_AI",
+          1.937999999994645
+        ],
+        [
+          "ASKING_AI",
+          3.202999999979511
+        ],
+        [
+          "ASKING_AI",
+          4.452999999979511
+        ],
+        [
+          "ASKING_AI",
+          5.7189999999827705
+        ],
+        [
+          "PENDING_WAREHOUSE",
+          6.9689999999827705
+        ],
+        [
+          "ASKING_AI",
+          8.265999999974156
+        ],
+        [
+          "ASKING_AI",
+          9.530999999988126
+        ],
+        [
+          "ASKING_AI",
+          10.765999999974156
+        ],
+        [
+          "ASKING_AI",
+          12.030999999988126
+        ],
+        [
+          "ASKING_AI",
+          13.280999999988126
+        ],
+        [
+          "ASKING_AI",
+          14.530999999988126
+        ],
+        [
+          "ASKING_AI",
+          15.780999999988126
+        ],
+        [
+          "ASKING_AI",
+          17.030999999988126
+        ],
+        [
+          "ASKING_AI",
+          18.280999999988126
+        ],
+        [
+          "COMPLETED",
+          19.530999999988126
+        ]
+      ]
+    },
+    {
+      "conversation_id": "01f1a12173801783abef96df2e3f4094",
+      "message_id": "01f1a1217f701436935d1b68ca861644",
+      "question": "show it per person instead",
+      "status": "COMPLETED",
+      "attachment_id": "01f1a12185251a1bbbc250a190dcb4cd",
+      "sql": "WITH latest_year AS (\n  SELECT MAX(`year`) AS max_year FROM `workspace`.`prove_it`.`emissions`\n), ranked_countries AS (\n  SELECT \n    `country`,\n    `co2`,\n    `co2_per_capita`,\n    `year`,\n    RANK() OVER (ORDER BY `co2_per_capita` DESC) AS rank\n  FROM `workspace`.`prove_it`.`emissions`\n  WHERE `year` = (SELECT max_year FROM latest_year)\n    AND `co2_per_capita` IS NOT NULL\n)\nSELECT `country`, `co2`, `co2_per_capita`, `year`\nFROM ranked_countries\nWHERE rank <= 10\nORDER BY rank;",
+      "description": "You want to see the top 10 countries ranked by CO2 emissions per person for the most recent year available in the data. The result includes each country's name, total CO2 emissions, CO2 emissions per person, and the year of the data.",
+      "text": "The top 10 countries for CO2 emissions per person in 2023 are led by **Qatar** with 38.84 tonnes per person, followed by **Bahrain** and **Trinidad and Tobago**. \nSome of the highest per-person values include:\n- **Qatar**: 38.84 tonnes\n- **Bahrain**: 23.27 tonnes\n- **Trinidad and Tobago**: 22.83 tonnes\n- **Saudi Arabia**: 22.13 tonnes\n- **United Arab Emirates**: 21.55 tonnes\n\nChina does not appear in the top 10 for CO2 emissions per person.",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see the top 10 countries ranked by CO2 emissions per person for the most recent year available in the data. The result includes each country's name, total CO2 emissions, CO2 emissions per person, and the year of the data."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.emissions"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Identify the most recent year in the emissions data.\n- Filter the data to include only records from that most recent year.\n- Rank countries by their CO2 emissions per person in descending order.\n- Select the top 10 countries based on this ranking.\n- Return the country name, total CO2 emissions, CO2 emissions per person, and the year for these top 10 countries."
+        }
+      ],
+      "timeline": [
+        [
+          "FILTERING_CONTEXT",
+          0.5309999999881256
+        ],
+        [
+          "FILTERING_CONTEXT",
+          1.7809999999881256
+        ],
+        [
+          "ASKING_AI",
+          3.0780000000086147
+        ],
+        [
+          "ASKING_AI",
+          4.342999999993481
+        ],
+        [
+          "ASKING_AI",
+          5.592999999993481
+        ],
+        [
+          "ASKING_AI",
+          6.85899999999674
+        ],
+        [
+          "ASKING_AI",
+          8.10899999999674
+        ],
+        [
+          "ASKING_AI",
+          9.35899999999674
+        ],
+        [
+          "PENDING_WAREHOUSE",
+          10.60899999999674
+        ],
+        [
+          "ASKING_AI",
+          11.85899999999674
+        ],
+        [
+          "ASKING_AI",
+          13.125
+        ],
+        [
+          "ASKING_AI",
+          14.35899999999674
+        ],
+        [
+          "ASKING_AI",
+          15.64000000001397
+        ],
+        [
+          "ASKING_AI",
+          16.89000000001397
+        ],
+        [
+          "ASKING_AI",
+          18.155999999988126
+        ],
+        [
+          "ASKING_AI",
+          19.39000000001397
+        ],
+        [
+          "COMPLETED",
+          20.655999999988126
+        ]
+      ]
+    }
+  ],
+  "results": {
+    "01f1a12173951478bd431b207f700c7a": {
+      "columns": [
+        "country",
+        "co2",
+        "year"
+      ],
+      "rows": [
+        [
+          "China",
+          "11902.503",
+          "2023"
+        ],
+        [
+          "United States",
+          "4911.391",
+          "2023"
+        ],
+        [
+          "India",
+          "3062.324",
+          "2023"
+        ],
+        [
+          "Russia",
+          "1815.925",
+          "2023"
+        ],
+        [
+          "Japan",
+          "988.785",
+          "2023"
+        ],
+        [
+          "Iran",
+          "817.88",
+          "2023"
+        ],
+        [
+          "Saudi Arabia",
+          "736.205",
+          "2023"
+        ],
+        [
+          "Indonesia",
+          "733.224",
+          "2023"
+        ],
+        [
+          "Germany",
+          "596.151",
+          "2023"
+        ],
+        [
+          "South Korea",
+          "577.417",
+          "2023"
+        ]
+      ]
+    },
+    "01f1a1217f701436935d1b68ca861644": {
+      "columns": [
+        "country",
+        "co2",
+        "co2_per_capita",
+        "year"
+      ],
+      "rows": [
+        [
+          "Qatar",
+          "115.712",
+          "38.841",
+          "2023"
+        ],
+        [
+          "Bahrain",
+          "36.527",
+          "23.27",
+          "2023"
+        ],
+        [
+          "Trinidad and Tobago",
+          "34.318",
+          "22.834",
+          "2023"
+        ],
+        [
+          "Saudi Arabia",
+          "736.205",
+          "22.132",
+          "2023"
+        ],
+        [
+          "United Arab Emirates",
+          "229.384",
+          "21.554",
+          "2023"
+        ],
+        [
+          "Kuwait",
+          "99.233",
+          "20.508",
+          "2023"
+        ],
+        [
+          "Oman",
+          "78.511",
+          "15.549",
+          "2023"
+        ],
+        [
+          "Australia",
+          "382.972",
+          "14.478",
+          "2023"
+        ],
+        [
+          "United States",
+          "4911.391",
+          "14.299",
+          "2023"
+        ],
+        [
+          "Canada",
+          "549.299",
+          "13.977",
+          "2023"
+        ]
+      ]
+    }
+  }
+}

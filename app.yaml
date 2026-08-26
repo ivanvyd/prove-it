@@ -1,0 +1,26 @@
+# Databricks Apps configuration.
+#
+# The Genie space is declared as a resource rather than hard-coded, so the app runs as its
+# own service principal and the space id arrives through the environment. Grant the app
+# "Can run" on the space, plus USE CATALOG / USE SCHEMA / SELECT on workspace.prove_it.
+
+command:
+  - streamlit
+  - run
+  - src/prove_it/ui/app.py
+  - --server.port
+  - "8000"
+  - --server.address
+  - "0.0.0.0"
+
+env:
+  - name: GENIE_SPACE_ID
+    valueFrom: genie-space
+
+  - name: PYTHONPATH
+    value: "src"
+
+  # Flip to "0" if the day-one probe shows free-text claims are unreliable; the curated
+  # rumour deck then becomes the only way in. See R11 in docs/requirement.md.
+  - name: PROVE_IT_FREE_TEXT
+    value: "1"

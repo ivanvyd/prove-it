@@ -1,0 +1,97 @@
+{
+  "claim": "boys are better at maths",
+  "turns": [
+    {
+      "conversation_id": "01f19cef42f81e17996b65ef60c957d0",
+      "message_id": "01f19cef4300183693efedf4ac9c2ebc",
+      "question": "Someone claims: \"boys are better at maths\". Compare the groups this claim is about using the data, and show the average for each group.",
+      "status": "COMPLETED",
+      "attachment_id": "01f19cef44ae12ce9ecbfa228aea3fa6",
+      "sql": "SELECT `gender`, AVG(`maths_score`) AS avg_maths_score FROM `workspace`.`prove_it`.`student_scores` WHERE `gender` IS NOT NULL AND `maths_score` IS NOT NULL GROUP BY `gender`",
+      "description": "You want to see the average maths score for boys and girls to compare their performance.",
+      "text": "The average maths score for **boys** is 492.6, and for **girls** it is 488.1. Boys have a slightly higher average maths score than girls in this data.",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see the average maths score for boys and girls to compare their performance."
+        },
+        {
+          "kind": "UNDERSTANDING",
+          "content": "- better at maths: The claim 'boys are better at maths' is interpreted as comparing the average maths scores of boys and girls. Alternative interpretations could include median scores, highest scores, or other performance metrics."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.student_scores"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Retrieve the gender and maths score for each student where both are available.\n- Calculate the average maths score for each gender group.\n- Show the average maths score for boys and girls separately to compare them."
+        }
+      ]
+    },
+    {
+      "conversation_id": "01f19cef42f81e17996b65ef60c957d0",
+      "message_id": "01f19cef4b1415d2b9db9457f1ce00ec",
+      "question": "Now show how spread out the individual values are within each group, and how many records are in each group, as well as the averages.",
+      "status": "COMPLETED",
+      "attachment_id": "01f19cef4cf31ce8baf2a3660dd8367c",
+      "sql": "SELECT `gender`, COUNT(*) AS students, AVG(`maths_score`) AS avg_maths_score, STDDEV(`maths_score`) AS spread FROM `workspace`.`prove_it`.`student_scores` WHERE `gender` IS NOT NULL AND `maths_score` IS NOT NULL GROUP BY `gender`",
+      "description": "You want to see the number of students, the average maths score, and how spread out the maths scores are for boys and girls separately.",
+      "text": "There are **4,812 boys** and **4,903 girls** in the data. The average maths score for boys is **492.6** with a spread of **91.7**, while for girls it is **488.1** with a spread of **87.2**. Boys have a slightly higher average maths score and their scores are a bit more spread out compared to girls.",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see the number of students, the average maths score, and how spread out the maths scores are for boys and girls separately."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.student_scores"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Count the number of students for each gender group.\n- Calculate the average maths score for each gender group.\n- Calculate the standard deviation of maths scores to show how spread out the scores are within each gender group.\n- Group the results by gender to compare boys and girls."
+        }
+      ]
+    }
+  ],
+  "results": {
+    "01f19cef4300183693efedf4ac9c2ebc": {
+      "columns": [
+        "gender",
+        "avg_maths_score"
+      ],
+      "rows": [
+        [
+          "boy",
+          "492.64332917705605"
+        ],
+        [
+          "girl",
+          "488.0624311645937"
+        ]
+      ]
+    },
+    "01f19cef4b1415d2b9db9457f1ce00ec": {
+      "columns": [
+        "gender",
+        "students",
+        "avg_maths_score",
+        "spread"
+      ],
+      "rows": [
+        [
+          "boy",
+          "4812",
+          "492.64332917705605",
+          "91.71313655709994"
+        ],
+        [
+          "girl",
+          "4903",
+          "488.0624311645937",
+          "87.1685447729959"
+        ]
+      ]
+    }
+  }
+}

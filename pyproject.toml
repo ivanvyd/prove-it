@@ -1,0 +1,66 @@
+[project]
+name = "prove-it"
+version = "0.1.0"
+description = "Test a claim by reading the query that would check it, not the answer it gives."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Ivan Vydrin" }]
+keywords = ["databricks", "genie", "data-literacy", "streamlit", "text-to-sql"]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "streamlit>=1.40",
+    "databricks-sdk>=0.68",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prove_it"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+markers = [
+    "slow: launches a real server in a subprocess; deselect with -m 'not slow'",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]
+include = ["src", "tests", "scripts"]
+# Databricks notebooks run with spark, dbutils and display injected by the runtime, and
+# against the runtime's own pandas/numpy. Neither is knowable from here.
+exclude = ["notebooks", ".venv"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts"]
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+# BLE (blind-except) is on deliberately. This app catches broadly at its I/O boundaries on
+# purpose — losing Genie, or the catalog, must degrade to an honest verdict rather than a
+# stack trace in front of a player — and every one of those catches is annotated with why.
+# Enabling the rule is what makes the annotation mean something: without it the `# noqa`
+# comments were decorative, suppressing a rule nobody had switched on.
+select = ["E", "F", "I", "UP", "B", "SIM", "BLE"]
+
+[tool.ruff.lint.per-file-ignores]
+# These three are entry points executed by path rather than imported as modules, so each
+# must put `src` on sys.path before it can import the package. The imports below that
+# bootstrap are deliberately not at the top of the file.
+"src/prove_it/ui/app.py" = ["E402"]
+"scripts/probe.py" = ["E402"]
+"scripts/setup_workspace.py" = ["E402"]
+"tests/test_probe.py" = ["E402"]
+"tests/test_setup_workspace.py" = ["E402"]

@@ -1,0 +1,31 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Probe output — recorded from a live Genie space, may contain workspace ids
+probe-runs/
+.databrickscfg
+.env
+
+# Databricks CLI sync state, per-machine
+.databricks/
+
+# Browser-tool scratch: screenshots, snapshots and console logs written beside the repo when
+# the app is driven for verification. Regenerated every run, and never part of the product.
+.playwright-mcp/
+
+# Downloaded public data. Not secret, just not ours to redistribute — docs/setup.md says
+# where to get it, and scripts/setup_workspace.py takes the path.
+data/
+
+# Working notes, local tooling config and browser QA captures. Kept on the machine that
+# made them; not part of the product.
+.claude/
+docs/plan-v2.md
+docs/plan-v3.md
+HANDOVER.md

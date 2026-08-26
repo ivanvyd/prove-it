@@ -1,0 +1,295 @@
+{
+  "claim": "Bulgaria halved its education spending between 1991 and 1996",
+  "turns": [
+    {
+      "conversation_id": "01f1a12149d9147ab76908a50a618a9d",
+      "message_id": "01f1a12149df1eb8baa4f9eb32d1c64c",
+      "question": "Bulgaria halved its education spending between 1991 and 1996",
+      "status": "COMPLETED",
+      "attachment_id": "01f1a1214d4d1517a673495b0f41214c",
+      "sql": "SELECT `year`, `combined_expenditure_share_gdp` FROM `workspace`.`prove_it`.`country_indicators` WHERE `entity` ILIKE '%Bulgaria%' AND `year` IN (1991, 1996) AND `combined_expenditure_share_gdp` IS NOT NULL ORDER BY `year` ASC;",
+      "description": "You want to see Bulgaria's education spending as a share of its GDP for the years 1991 and 1996.",
+      "text": "Bulgaria's education spending as a share of GDP dropped from **5.43% in 1991** to **2.23% in 1996**. This is a reduction of more than half over the period. The claim is supported by the data.",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see Bulgaria's education spending as a share of its GDP for the years 1991 and 1996."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.country_indicators"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Retrieve the education spending share of GDP for Bulgaria.\n- Filter the data to only include the years 1991 and 1996.\n- Order the results by year to show the progression from 1991 to 1996."
+        }
+      ],
+      "timeline": [
+        [
+          "FILTERING_CONTEXT",
+          0.5309999999881256
+        ],
+        [
+          "ASKING_AI",
+          1.8439999999827705
+        ],
+        [
+          "ASKING_AI",
+          3.10999999998603
+        ],
+        [
+          "ASKING_AI",
+          4.35999999998603
+        ],
+        [
+          "ASKING_AI",
+          5.671999999991385
+        ],
+        [
+          "ASKING_AI",
+          6.921999999991385
+        ],
+        [
+          "ASKING_AI",
+          8.21899999998277
+        ],
+        [
+          "ASKING_AI",
+          9.46899999998277
+        ],
+        [
+          "ASKING_AI",
+          10.71899999998277
+        ],
+        [
+          "ASKING_AI",
+          11.98499999998603
+        ],
+        [
+          "ASKING_AI",
+          13.23499999998603
+        ],
+        [
+          "COMPLETED",
+          14.48499999998603
+        ]
+      ]
+    },
+    {
+      "conversation_id": "01f1a12149d9147ab76908a50a618a9d",
+      "message_id": "01f1a12152c5146280284739624b92c7",
+      "question": "now show every year in the data, not just the 1990s",
+      "status": "COMPLETED",
+      "attachment_id": "01f1a1215494173e99614f5c7191bb7e",
+      "sql": "SELECT `year`, `combined_expenditure_share_gdp` FROM `workspace`.`prove_it`.`country_indicators` WHERE `entity` ILIKE '%Bulgaria%' AND `combined_expenditure_share_gdp` IS NOT NULL ORDER BY `year` ASC;",
+      "description": "You want to see the education spending as a share of GDP for Bulgaria for every year available in the data, ordered from earliest to latest year.",
+      "text": "Bulgaria's education spending as a share of GDP is shown for every year in the data from 1980 to 2022. Some notable values include:\n- **1980:** 3.53\n- **1991:** 5.43\n- **1996:** 2.23\n- **2010:** 3.86\n- **2022:** 4.50\n\nSpending peaked in 1991 and dropped sharply in the mid-1990s, then gradually increased again in recent years.",
+      "thoughts": [
+        {
+          "kind": "DESCRIPTION",
+          "content": "You want to see the education spending as a share of GDP for Bulgaria for every year available in the data, ordered from earliest to latest year."
+        },
+        {
+          "kind": "DATA_SOURCING",
+          "content": "- workspace.prove_it.country_indicators"
+        },
+        {
+          "kind": "STEPS",
+          "content": "- Retrieve the year and education spending share as a percentage of GDP for Bulgaria.\n- Filter to include only rows where the education spending share is not null.\n- Order the results by year in ascending order to show the trend over time."
+        }
+      ],
+      "timeline": [
+        [
+          "FILTERING_CONTEXT",
+          0.5309999999881256
+        ],
+        [
+          "ASKING_AI",
+          1.7809999999881256
+        ],
+        [
+          "ASKING_AI",
+          3.0309999999881256
+        ],
+        [
+          "ASKING_AI",
+          4.296999999991385
+        ],
+        [
+          "ASKING_AI",
+          5.5939999999827705
+        ],
+        [
+          "ASKING_AI",
+          6.8439999999827705
+        ],
+        [
+          "ASKING_AI",
+          8.10899999999674
+        ],
+        [
+          "ASKING_AI",
+          9.405999999988126
+        ],
+        [
+          "ASKING_AI",
+          10.655999999988126
+        ],
+        [
+          "COMPLETED",
+          11.905999999988126
+        ]
+      ]
+    }
+  ],
+  "results": {
+    "01f1a12149df1eb8baa4f9eb32d1c64c": {
+      "columns": [
+        "year",
+        "combined_expenditure_share_gdp"
+      ],
+      "rows": [
+        [
+          "1991",
+          "5.42962"
+        ],
+        [
+          "1996",
+          "2.23008"
+        ]
+      ]
+    },
+    "01f1a12152c5146280284739624b92c7": {
+      "columns": [
+        "year",
+        "combined_expenditure_share_gdp"
+      ],
+      "rows": [
+        [
+          "1980",
+          "3.52948"
+        ],
+        [
+          "1990",
+          "4.45406"
+        ],
+        [
+          "1991",
+          "5.42962"
+        ],
+        [
+          "1992",
+          "5.26046"
+        ],
+        [
+          "1993",
+          "4.95049"
+        ],
+        [
+          "1994",
+          "4.17066"
+        ],
+        [
+          "1995",
+          "2.37207"
+        ],
+        [
+          "1996",
+          "2.23008"
+        ],
+        [
+          "1998",
+          "2.73943"
+        ],
+        [
+          "2001",
+          "3.38424"
+        ],
+        [
+          "2002",
+          "3.38608"
+        ],
+        [
+          "2003",
+          "3.99845"
+        ],
+        [
+          "2004",
+          "4.24989"
+        ],
+        [
+          "2005",
+          "4.1088"
+        ],
+        [
+          "2006",
+          "3.90346"
+        ],
+        [
+          "2007",
+          "3.68034"
+        ],
+        [
+          "2008",
+          "4.21909"
+        ],
+        [
+          "2009",
+          "4.27429"
+        ],
+        [
+          "2010",
+          "3.85746"
+        ],
+        [
+          "2011",
+          "3.5469"
+        ],
+        [
+          "2012",
+          "3.4765"
+        ],
+        [
+          "2013",
+          "4.05766"
+        ],
+        [
+          "2014",
+          "4.19388"
+        ],
+        [
+          "2015",
+          "3.88469"
+        ],
+        [
+          "2016",
+          "3.81436"
+        ],
+        [
+          "2017",
+          "4.07755"
+        ],
+        [
+          "2018",
+          "4.05201"
+        ],
+        [
+          "2019",
+          "4.2143"
+        ],
+        [
+          "2020",
+          "4.48299"
+        ],
+        [
+          "2021",
+          "4.70924"
+        ],
+        [
+          "2022",
+          "4.50109"
+        ]
+      ]
+    }
+  }
+}

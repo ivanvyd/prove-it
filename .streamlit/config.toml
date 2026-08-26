@@ -1,0 +1,36 @@
+# Streamlit ships with usage telemetry ON by default (browser.gatherUsageStats defaults
+# to True). This app is used by children, and its own spec promises no analytics and no
+# external calls, so the default is turned off here rather than left to chance.
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# A child must never be shown a Python traceback. The application already routes every
+# Genie failure to the "can't tell" outcome; this is the backstop for anything that gets
+# past that, and it is why the deployed app shows a plain message instead of internals.
+showErrorDetails = "none"
+
+[server]
+headless = true
+
+[theme]
+# The app is a case-file drawer: manila folders and cream paper on a dark desk (see
+# ui/style.py, ported from the Claude Design file "Case Files Rework"). The page itself is
+# a cream sheet, so the base theme is light — that keeps Streamlit's own widgets on the
+# same ground instead of rendering dark chrome on a cream page for viewers whose system
+# theme is dark. The CSS restyles the controls; the base only sets the ground.
+base = "light"
+
+# The case-file red, so Streamlit's own primary matches the CSS tokens in ui/style.py.
+#
+# backgroundColor is the SHEET, not the desk, and that is load-bearing rather than a
+# preference: st.dataframe renders to a canvas via glide-data-grid, which takes its cell
+# and header colours from this theme object and cannot see CSS custom properties. Setting
+# the dark desk here painted the result tables dark — grey headers and unreadable rows on
+# a cream page, which is exactly the evidence a judge is meant to read. The desk is
+# painted by `.stApp` in ui/style.py instead, where only the page background is affected.
+primaryColor = "#B3372F"
+backgroundColor = "#FFFDF6"
+secondaryBackgroundColor = "#F1ECDD"
+textColor = "#1B2027"

@@ -1,0 +1,5 @@
+# Databricks Apps installs from this file. Kept deliberately minimal and in step with
+# pyproject.toml — the app itself needs nothing beyond Streamlit and the SDK, because all
+# the analysis is arithmetic over rows Genie returns.
+streamlit>=1.40
+databricks-sdk>=0.68

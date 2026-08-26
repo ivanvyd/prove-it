@@ -1,0 +1,216 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<!--
+  The gap marker: the player drags to say how far apart they think the two groups are,
+  BEFORE any row is fetched.
+
+  This is a Streamlit *bidirectional* component rather than a `components.html` block,
+  because it has to send a value back. Everything else in this app renders into a
+  one-way iframe; those can show but never answer. The protocol below is the v1
+  component wire format, spoken by hand — no npm, no React, no build step, and no
+  external request of any kind, which the product forbids and Free Edition would block anyway.
+
+  Colours and fonts arrive as args from Python for the reason `ui/style.py` documents at
+  length: an iframe is a separate document and cannot read the page's custom properties.
+-->
+<div id="root">
+  <div class="gm-head">
+    <span class="gm-k" id="prompt"></span>
+    <span class="gm-val"><b id="value">—</b><span id="unit"></span></span>
+  </div>
+
+  <div class="gm-track" id="track" tabindex="0" role="slider"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Your estimate">
+    <div class="gm-fill" id="fill"></div>
+    <div class="gm-knob" id="knob"></div>
+  </div>
+
+  <div class="gm-foot">
+    <span id="lo"></span>
+    <span class="gm-hint" id="hint">Drag to mark your estimate</span>
+    <span id="hi"></span>
+  </div>
+</div>
+
+<script>
+// ---- Streamlit v1 component protocol, spoken by hand -------------------------------
+function toStreamlit(type, data) {
+  window.parent.postMessage(
+    Object.assign({ isStreamlitMessage: true, type: type }, data), "*");
+}
+function ready()            { toStreamlit("streamlit:componentReady", { apiVersion: 1 }); }
+function setHeight(h)       { toStreamlit("streamlit:setFrameHeight", { height: h }); }
+function sendValue(v)       { toStreamlit("streamlit:setComponentValue",
+                                          { value: v, dataType: "json" }); }
+
+var root  = document.getElementById("root");
+var track = document.getElementById("track");
+var fill  = document.getElementById("fill");
+var knob  = document.getElementById("knob");
+
+var CFG = null;      // the args Python sent
+var frac = null;     // 0..1, null until the player has actually touched it
+
+function value() { return CFG.lo + (CFG.hi - CFG.lo) * frac; }
+
+function fmt(v) {
+  var dp = CFG.decimals == null ? 1 : CFG.decimals;
+  return v.toFixed(dp);
+}
+
+function paint() {
+  var pct = (frac == null ? 0 : frac) * 100;
+  fill.style.width = pct + "%";
+  knob.style.left  = pct + "%";
+  knob.style.opacity = frac == null ? 0.35 : 1;
+  document.getElementById("value").textContent = frac == null ? "—" : fmt(value());
+  track.setAttribute("aria-valuenow", frac == null ? 0 : Math.round(value()));
+  root.classList.toggle("is-set", frac != null);
+}
+
+// Report only on release, never on every pixel: each value that reaches Python is a
+// full Streamlit rerun of the entire script, and streaming one per mousemove would
+// re-render the page a hundred times a drag.
+function commit() {
+  if (frac == null) return;
+  sendValue({ fraction: frac, value: value() });
+}
+
+function at(clientX) {
+  var r = track.getBoundingClientRect();
+  return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+}
+
+var dragging = false;
+function down(e) {
+  dragging = true;
+  frac = at((e.touches ? e.touches[0] : e).clientX);
+  paint();
+  e.preventDefault();
+}
+function move(e) {
+  if (!dragging) return;
+  frac = at((e.touches ? e.touches[0] : e).clientX);
+  paint();
+  e.preventDefault();
+}
+function up() {
+  if (!dragging) return;
+  dragging = false;
+  commit();
+}
+
+track.addEventListener("mousedown", down);
+window.addEventListener("mousemove", move);
+window.addEventListener("mouseup", up);
+track.addEventListener("touchstart", down, { passive: false });
+window.addEventListener("touchmove", move, { passive: false });
+window.addEventListener("touchend", up);
+
+// Keyboard, because a control that only takes a drag is a control some people cannot
+// use at all. Arrows step, Home/End jump, and each keypress commits.
+track.addEventListener("keydown", function (e) {
+  var step = e.shiftKey ? 0.1 : 0.02;
+  var next = frac == null ? 0.5 : frac;
+  if (e.key === "ArrowRight" || e.key === "ArrowUp") next = Math.min(1, next + step);
+  else if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = Math.max(0, next - step);
+  else if (e.key === "Home") next = 0;
+  else if (e.key === "End") next = 1;
+  else return;
+  e.preventDefault();
+  frac = next;
+  paint();
+  commit();
+});
+
+function onRender(event) {
+  if (event.data.type !== "streamlit:render") return;
+  var a = event.data.args || {};
+  CFG = {
+    lo: a.lo == null ? 0 : a.lo,
+    hi: a.hi == null ? 100 : a.hi,
+    decimals: a.decimals,
+    theme: a.theme || {},
+  };
+
+  document.getElementById("prompt").textContent = a.prompt || "";
+  document.getElementById("unit").textContent = a.unit || "";
+  document.getElementById("lo").textContent = a.lo_label || "";
+  document.getElementById("hi").textContent = a.hi_label || "";
+
+  // Python owns the value across reruns: it hands back whatever was last committed, so
+  // a rerun triggered by anything else on the page does not wipe the mark.
+  if (a.fraction != null) frac = a.fraction;
+
+  var t = CFG.theme;
+  var s = root.style;
+  s.setProperty("--ink",    t.ink    || "#1B2027");
+  s.setProperty("--pencil", t.pencil || "#5B6055");
+  s.setProperty("--rule",   t.rule   || "#DDD5C2");
+  s.setProperty("--paper",  t.paper  || "#FFFDF6");
+  s.setProperty("--gold",   t.gold   || "#C9B37E");
+  s.setProperty("--serif",  t.serif  || "Georgia, serif");
+  s.setProperty("--mono",   t.mono   || "Consolas, monospace");
+
+  paint();
+  setHeight(document.documentElement.scrollHeight);
+}
+
+window.addEventListener("message", onRender);
+ready();
+window.addEventListener("load", function () {
+  setTimeout(function () { setHeight(document.documentElement.scrollHeight); }, 0);
+});
+</script>
+
+<style>
+  html, body { margin:0; padding:0; background:transparent; }
+  #root {
+    font-family: var(--serif); color: var(--ink);
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 14px 16px 12px;
+  }
+  .gm-head { display:flex; justify-content:space-between; align-items:baseline;
+    gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .gm-k { font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--pencil); }
+  .gm-val { font-family:var(--mono); font-size:13px; color:var(--pencil); }
+  .gm-val b { font-family:var(--mono); font-size:24px; color:var(--ink);
+    font-variant-numeric:tabular-nums; margin-right:2px; }
+  #root:not(.is-set) .gm-val b { color:var(--pencil); }
+
+  /* 44px tall, with the visible rule still a 2px line through the middle. The hit area was
+     16px — fine with a mouse, and well under the 44px touch guideline on the classroom
+     tablet this is aimed at, where the control is a drag rather than a tap. Padding rather
+     than a taller line: the target grows, the drawing does not. */
+  .gm-track { position:relative; height:44px; margin:0 9px;
+    background:linear-gradient(var(--rule),var(--rule)) 0 50%/100% 2px no-repeat;
+    cursor:pointer; outline:none; touch-action:none; }
+  .gm-track:focus-visible { box-shadow:0 0 0 3px rgba(31,78,121,.35); }
+
+  .gm-fill { position:absolute; top:50%; left:0; height:2px; margin-top:-1px;
+    background:var(--gold); width:0; }
+  .gm-knob { position:absolute; top:50%; left:0; width:18px; height:18px;
+    margin:-9px 0 0 -9px; border-radius:50%; background:var(--paper);
+    border:2px solid var(--ink); transition:opacity .15s; }
+
+  .gm-foot { display:flex; justify-content:space-between; align-items:baseline;
+    gap:10px; margin-top:10px; font-family:var(--mono); font-size:10px;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--pencil); }
+  .gm-hint { font-family:var(--serif); font-size:12px; letter-spacing:0;
+    text-transform:none; opacity:.8; }
+  #root.is-set .gm-hint { opacity:0; }
+
+  /* The endpoint labels used to be hidden below 520px, which left a first-time player
+     dragging with no idea what the scale ran to — the live readout tells you where you
+     ARE, not where the ends are. They stay, shrunk, and the hint gives way instead. */
+  @media (max-width:520px) {
+    .gm-foot { font-size:9px; letter-spacing:.04em; gap:6px; }
+    .gm-hint { display:none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .gm-knob { transition:none; } }
+</style>
+</body>
+</html>

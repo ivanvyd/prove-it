@@ -1,0 +1,50 @@
+MIT License
+
+Copyright (c) 2026 Ivan Vydrin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+THIRD-PARTY DATA
+
+The MIT terms above cover this repository's own code and prose. Two of the
+datasets the cases are built on are other people's work, published under their
+own terms, and are attributed here because that is a condition of using them —
+not merely a courtesy.
+
+**Our World in Data** — CO2 and Greenhouse Gas Emissions, and education
+expenditure as a share of GDP. Licensed CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/). Source:
+https://ourworldindata.org. Neither dataset is redistributed in this
+repository; `scripts/load_cases.py` and `scripts/setup_workspace.py` take a CSV
+you download yourself, which is also why Free Edition's restricted outbound
+network does not break the setup.
+
+**Bickel, Hammel & O'Connell (1975)**, "Sex Bias in Graduate Admissions: Data
+from Berkeley", *Science* 187(4175). The six-department admissions table is
+transcribed in `src/prove_it/case_data.py` — twelve published cells, checked
+against the paper and against R's `datasets::UCBAdmissions` by
+`tests/test_case_data.py`. It is quoted as published data for teaching, with
+the source named on the case card in the app itself.
+
+**`student_scores` is synthetic.** It is generated from a fixed seed by
+`notebooks/01_generate_data.py`, contains no real pupils, and is labelled as
+synthetic wherever it appears on screen. No real personal data of any kind is
+used anywhere in this project.
