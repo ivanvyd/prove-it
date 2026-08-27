@@ -1,5 +1,10 @@
-# Databricks Apps installs from this file. Kept deliberately minimal and in step with
-# pyproject.toml — the app itself needs nothing beyond Streamlit and the SDK, because all
-# the analysis is arithmetic over rows Genie returns.
-streamlit>=1.40
+# Databricks Apps and Streamlit Community Cloud install from this file. Kept deliberately
+# minimal and in step with pyproject.toml — the app itself needs nothing beyond Streamlit
+# and the SDK, because all the analysis is arithmetic over rows Genie returns.
+#
+# 1.62 rather than 1.40: every visual mounts through `st.iframe`, which replaced
+# `components.v1.html` in 1.62. A resolver that picked an earlier version would import fine
+# and then fail the moment the first frame renders — so the floor is where the API the app
+# is built on actually exists.
+streamlit>=1.62
 databricks-sdk>=0.68
