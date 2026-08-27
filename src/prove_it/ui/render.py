@@ -33,26 +33,33 @@ def verdict_chip(verdict: Verdict, *, arrive: bool = False) -> str:
     return f'<span class="pi-verdict {css}{extra}">{label}</span>'
 
 
-def bring_into_view() -> None:
+def bring_into_view(*, clear_leaving: bool = True) -> None:
     """Scroll the page to the top after a change of scene.
 
     Streamlit keeps the scroll position across a rerun, which is right for a widget change
     and wrong for a navigation: a player who clicked a folder halfway down the archive
     landed halfway down the board. The scroll container is Streamlit's block container, not
     the document, so this is a one-pixel frame reaching up into the parent to move it.
+
+    `clear_leaving=False` scrolls without stripping the archive's leaving-fade — the
+    open-a-case flow scrolls to the interrogation room at the top while the archive is
+    still meant to be fading away beneath it.
     """
+    strip = (
+        "  d.querySelectorAll('.is-leaving, .is-opening').forEach(function (e) {"
+        "    e.classList.remove('is-leaving', 'is-opening'); });"
+        if clear_leaving
+        else ""
+    )
     st.iframe(
         "<script>(function () {"
         "  var d = window.parent.document;"
         "  ['[data-testid=\"stMainBlockContainer\"]', 'section.stMain']"
         "    .map(function (s) { return d.querySelector(s); })"
         "    .filter(Boolean).forEach(function (s) { s.scrollTop = 0; });"
-        "  window.parent.scrollTo(0, 0);"
+        "  window.parent.scrollTo(0, 0);" + strip + "})();</script>",
         # The archive's leaving-animation classes. Streamlit keeps the container node
         # across reruns, so what a click added is still there when the next scene lands.
-        "  d.querySelectorAll('.is-leaving, .is-opening').forEach(function (e) {"
-        "    e.classList.remove('is-leaving', 'is-opening'); });"
-        "})();</script>",
         # One pixel, not none: `st.iframe` rejects a height of zero. The container is
         # hidden in CSS, so the pixel never reaches the page.
         height=1,

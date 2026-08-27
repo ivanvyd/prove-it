@@ -376,6 +376,9 @@ h1,h2,h3 { font-family:var(--f-display) !important; color:var(--bone); }
 .stApp, .stMarkdown { color:var(--bone); }
 .stMarkdown p { margin:0; }
 [data-testid="stCaptionContainer"] { color:var(--ash); }
+/* The page-wide families above also landed on Streamlit's Material icon spans, so the
+   icon face was never requested and expander chevrons read as "keyboard_arrow_down". */
+.stApp [data-testid="stIconMaterial"] { font-family:"Material Symbols Rounded" !important; }
 
 /* --- native widgets, dressed for the room ------------------------------------------ */
 /* Every button is a mono, uppercase, letter-spaced control the way the design draws them.

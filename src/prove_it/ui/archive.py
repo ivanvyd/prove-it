@@ -119,7 +119,13 @@ def folder(case: Case, index: int, *, up_next: bool, closed: Verdict | None) -> 
         if closed is not None
         else ""
     )
-    note = f'<span class="pi-fnote">{html.escape(case.note)}</span>' if case.note else ""
+    # The note yields to the stamp: both sit at the flap's bottom-right, and a closed
+    # folder was printing "the famous one →" underneath its CLOSED · BUSTED.
+    note = (
+        f'<span class="pi-fnote">{html.escape(case.note)}</span>'
+        if case.note and closed is None
+        else ""
+    )
     return (
         f'<div class="pi-folder pi-folder--{kind}" style="--rot:{tilt}deg">'
         '<span class="pi-fbody"></span>'
@@ -354,9 +360,13 @@ ARCHIVE_CSS = """
   transform:translateY(-140px) scale(1.5) !important; opacity:0; }
 /* Scoped to the archive: Streamlit keeps the container node across reruns, so the class
    the click added is still there when the board arrives — and without the scope the board
-   rendered at opacity 0, a whole scene invisible. `bring_into_view` strips it as well. */
-.stMainBlockContainer.is-leaving:has(.pi-archive) > [data-testid="stVerticalBlock"] {
-  opacity:0; transform:scale(1.05); transition:opacity .55s ease, transform .55s ease; }
+   rendered at opacity 0, a whole scene invisible. `bring_into_view` strips it as well.
+   The fade takes the archive's children one by one and skips whichever holds the
+   interrogation room, because on a live workspace the first Genie turn runs ~20s and the
+   player was staring at a fully faded page with the room rendered invisibly inside it. */
+.stMainBlockContainer.is-leaving [class*="st-key-archive"]
+  > *:not(:has(iframe[srcdoc*="ir-head"])) {
+  opacity:0; transform:scale(1.02); transition:opacity .55s ease, transform .55s ease; }
 
 /* Case Nº 0, opened: the rumour is written on a sheet pulled from the folder. */
 .stMainBlockContainer:has(.pi-archive) [data-testid="stForm"] {

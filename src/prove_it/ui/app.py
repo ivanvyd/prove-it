@@ -259,53 +259,71 @@ def beat_archive(settings: Settings) -> None:
     docket = session_docket(settings)
     run = session_run()
     record = session_record()
-    st.markdown(
-        '<span class="pi-archive"></span>'
-        + header_bar(
-            run, kit=len(record.antibodies), docket_size=len(docket), source_url=settings.source_url
-        ),
-        unsafe_allow_html=True,
-    )
-    st.markdown(hero(len(docket)), unsafe_allow_html=True)
+    # The whole scene lives in its own keyed container so its element paths can never
+    # collide with the case scene's. Streamlit reuses a measured element height when a
+    # rerun puts a different element at the same path — the archive's header markdown
+    # landed on the path the board iframe had held, kept its 960px, and the docket
+    # opened on a screen of empty room.
+    archive = st.container(key="archive")
+    with archive:
+        # Present on every archive run so nothing shifts paths, and filled only while a
+        # case is opening: the interrogation room plays here, at the top, excluded from
+        # the leaving-fade — inside the fade it spent the whole first Genie turn
+        # invisible and the player watched a black screen.
+        room_slot = st.empty()
+        st.markdown(
+            '<span class="pi-archive"></span>'
+            + header_bar(
+                run,
+                kit=len(record.antibodies),
+                docket_size=len(docket),
+                source_url=settings.source_url,
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown(hero(len(docket)), unsafe_allow_html=True)
 
-    closed = closed_verdicts(run)
-    up_next = next((case.key for case in docket if case.key not in closed), None)
-    chosen: Case | None = None
-    claim = ""
+        closed = closed_verdicts(run)
+        up_next = next((case.key for case in docket if case.key not in closed), None)
+        chosen: Case | None = None
+        claim = ""
 
-    # One wrapping row: the design's drawer, which lays four abreast and lets the fifth
-    # fall to the next line. Streamlit columns are made to wrap by the archive's CSS.
-    columns = st.columns(len(docket) + (1 if settings.free_text else 0), gap="small")
-    for index, case in enumerate(docket):
-        with columns[index]:
-            if render_folder(case, index, up_next=case.key == up_next, closed=closed.get(case.key)):
-                chosen = case
-    if settings.free_text:
-        with columns[-1]:
-            if render_own_folder():
-                st.session_state.own_open = not st.session_state.get("own_open", False)
-                st.rerun()
-        if st.session_state.get("own_open"):
-            # A form, so the claim is only sent when it is submitted. A bare text_input
-            # returns its value on every rerun, which would fire a Genie call at whatever
-            # had been typed so far.
-            with st.form("claim-form", clear_on_submit=False):
-                typed = st.text_input(
-                    "Your rumour",
-                    placeholder="write your own rumour here .........",
-                    label_visibility="collapsed",
+        # One wrapping row: the design's drawer, which lays four abreast and lets the
+        # fifth fall to the next line. Streamlit columns are made to wrap by the CSS.
+        columns = st.columns(len(docket) + (1 if settings.free_text else 0), gap="small")
+        for index, case in enumerate(docket):
+            with columns[index]:
+                if render_folder(
+                    case, index, up_next=case.key == up_next, closed=closed.get(case.key)
+                ):
+                    chosen = case
+        if settings.free_text:
+            with columns[-1]:
+                if render_own_folder():
+                    st.session_state.own_open = not st.session_state.get("own_open", False)
+                    st.rerun()
+            if st.session_state.get("own_open"):
+                # A form, so the claim is only sent when it is submitted. A bare
+                # text_input returns its value on every rerun, which would fire a Genie
+                # call at whatever had been typed so far.
+                with st.form("claim-form", clear_on_submit=False):
+                    typed = st.text_input(
+                        "Your rumour",
+                        placeholder="write your own rumour here .........",
+                        label_visibility="collapsed",
+                    )
+                    if st.form_submit_button("Test it", type="primary") and typed.strip():
+                        claim = typed.strip()
+                st.markdown(
+                    '<div class="pi-own-note">Most typed claims end in &ldquo;can&rsquo;t '
+                    "tell&rdquo; &mdash; the data has no column for them. That is a win, "
+                    "not a failure.</div>",
+                    unsafe_allow_html=True,
                 )
-                if st.form_submit_button("Test it", type="primary") and typed.strip():
-                    claim = typed.strip()
-            st.markdown(
-                '<div class="pi-own-note">Most typed claims end in &ldquo;can&rsquo;t tell&rdquo; '
-                "&mdash; the data has no column for them. That is a win, not a failure.</div>",
-                unsafe_allow_html=True,
-            )
 
-    st.markdown(footer(OFFLINE_NOTE if settings.offline else None), unsafe_allow_html=True)
-    mapping_panel(settings, docket)
-    st.iframe(archive_script(), height=1)
+        st.markdown(footer(OFFLINE_NOTE if settings.offline else None), unsafe_allow_html=True)
+        mapping_panel(settings, docket)
+        st.iframe(archive_script(), height=1)
 
     if chosen is None and not claim:
         return
@@ -318,14 +336,20 @@ def beat_archive(settings: Settings) -> None:
             else Investigation.open(claim, client)
         )
     except ClaimError as exc:
-        st.warning(str(exc))
+        with archive:
+            st.warning(str(exc))
         return
 
-    # The room renders here, once, directly after the drawer — not inside the column of
-    # the folder that was clicked. Writing into a container created inside a column AFTER
-    # the loop has emitted later columns makes Streamlit re-emit that column's block, and
-    # the docket grew a second, greyed-out copy of the case below the real one.
-    run_with_room(investigation.ask_genie, "Genie is working out how to check that…")
+    # The room plays in the slot at the top of the scene — not inside the column of the
+    # folder that was clicked (a container created inside a column after the loop makes
+    # Streamlit re-emit that column's block), and not after the drawer, where the
+    # leaving-fade swallowed it. The scroll frame renders first, as its own element —
+    # inside the slot the room's first paint would replace it before its script ran —
+    # so the player is looking at the room while the archive fades around it.
+    bring_into_view(clear_leaving=False)
+    run_with_room(
+        investigation.ask_genie, "Genie is working out how to check that…", slot=room_slot
+    )
     st.session_state.investigation = investigation
     st.session_state.scroll_to_top = True
     st.session_state.scene_enter = True
