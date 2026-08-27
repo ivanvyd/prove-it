@@ -328,12 +328,7 @@ _CSS = """
   background-color:var(--room);
   background-image:
     radial-gradient(ellipse 78% 62% at 50% 44%, transparent 44%, rgba(0,0,0,.72) 100%),
-    radial-gradient(ellipse 24px 14px at 50% 122px, var(--shade) 52%,
-      var(--shade-deep) 66%, transparent 69%),
-    radial-gradient(circle 13px at 50% 137px, var(--bulb), var(--bulb-warm) 55%,
-      rgba(242,200,119,.25) 78%, transparent 82%),
-    radial-gradient(circle 58px at 50% 137px, rgba(242,200,119,.34), transparent 72%),
-    linear-gradient(180deg, var(--cord), var(--cord-lit)),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 200'><defs><radialGradient id='b' cx='42%25' cy='38%25' r='75%25'><stop offset='0' stop-color='%23FFF7DC'/><stop offset='.55' stop-color='%23FFF3D0'/><stop offset='1' stop-color='%23F2C877'/></radialGradient><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23464D58'/><stop offset='.6' stop-color='%233A4048'/><stop offset='1' stop-color='%2323262B'/></linearGradient></defs><rect x='80' y='0' width='10' height='9' rx='2' fill='%232A313A'/><rect x='84' y='7' width='2' height='108' fill='%232A313A'/><circle cx='85' cy='158' r='17' fill='%23F2C877' opacity='.25'/><circle cx='85' cy='158' r='12' fill='url(%23b)'/><path d='M85 110 C 64 112 51 130 48 151 L 122 151 C 119 130 106 112 85 110 Z' fill='url(%23s)'/><ellipse cx='85' cy='151' rx='37' ry='6' fill='%2323262B'/><ellipse cx='85' cy='152' rx='30' ry='4' fill='%23F2C877' opacity='.75'/></svg>"),
     radial-gradient(ellipse 46% 58% at 50% 18%, rgba(238,196,118,.17),
       rgba(238,196,118,.055) 46%, transparent 72%),
     linear-gradient(180deg, rgba(255,230,180,.22), transparent),
@@ -345,11 +340,10 @@ _CSS = """
     linear-gradient(180deg, var(--wall) 0%, var(--wall-mid) 42%, var(--wall-low) 62%,
       var(--wall-foot) 100%);
   background-size:
-    100% 100%, 100% 100%, 100% 100%, 100% 100%,
-    2px 108px, min(1150px, 120vw) 70%, 100% 5px, 100% 46%, 100% 46%,
+    100% 100%, 170px 200px, min(1150px, 120vw) 70%, 100% 5px, 100% 46%, 100% 46%,
     min(230px, 16vw) 54%, min(250px, 17vw) 54%, 100% 100%;
   background-position:
-    center, center, center, center, center top, center 130px, left 54%,
+    center, center top, center 145px, left 54%,
     left bottom, left bottom, -40px 14%, calc(100% + 60px) 12%, center;
   background-repeat:no-repeat;
   background-attachment:fixed; }

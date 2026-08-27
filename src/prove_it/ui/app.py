@@ -132,7 +132,7 @@ def closed_verdicts(run: Run) -> dict[str, Verdict]:
     return {call.key: call.verdict for call in run.calls}
 
 
-def run_with_room(call, label: str):
+def run_with_room(call, label: str, *, slot=None):
     """Run one Genie turn while showing the interrogation room instead of a spinner.
 
     `call` takes an `on_status(status, elapsed)` callback and does the Genie work. Each
@@ -141,7 +141,11 @@ def run_with_room(call, label: str):
     on every phase. `label` is the accessible caption on the room, the one line a screen
     reader gets where a sighted user gets the board.
     """
-    slot = st.empty()
+    # The caller may hand in a slot it created at a path that exists on EVERY run.
+    # Making one here on only some runs shifts every later element's path, and Streamlit
+    # matches keyed containers by path — the shifted run then duplicates the desk and
+    # leaves the old one behind as a permanently dimmed zombie.
+    slot = st.empty() if slot is None else slot
     started_ms = time.time() * 1000
     # The last phase actually painted. The client reports a status every second, but the
     # room only changes when the PHASE changes — several raw statuses fold onto one light.
@@ -769,17 +773,24 @@ def kit_overlay(inv: Investigation) -> None:
 
 
 def beat_case(inv: Investigation, settings: Settings, *, finished: bool) -> None:
-    # The follow-up, when one was just submitted: run it here, at the desk's top, with the
-    # interrogation room in place of the whole board — not inside the review panel, where a
-    # rerun would strand that panel behind the retrial. Then rerun to the settled retrial.
+    # A slot that exists on EVERY run of this beat, repair or not, so the elements after
+    # it keep the same paths run over run. The follow-up renders the interrogation room
+    # into it while Genie works, then FALLS THROUGH — no st.rerun(), and no extra
+    # elements: either would shift or abandon paths, and Streamlit matches keyed
+    # containers by path, which is exactly how the review desk survived as a permanently
+    # dimmed zombie above the retrial. Repairing mutates inv.stage in place, so this very
+    # run carries on and renders the retrial clean; the scroll iframe takes the room's
+    # place inside the same slot.
+    room_slot = st.empty()
     asked = st.session_state.pop("repairing", None)
     if asked is not None and inv.stage is Stage.REVEALED:
         run_with_room(
             lambda on_status: inv.repair(on_status, asked=asked),
             "Genie is rewriting the query…",
+            slot=room_slot,
         )
-        st.session_state.scroll_to_top = True
-        st.rerun()
+        with room_slot:
+            bring_into_view()
 
     phase = phase_of(inv, finished=finished)
     number = case_number(inv)
