@@ -607,12 +607,10 @@ def headline_below(inv: Investigation) -> None:
     """The chart that would have convinced them, with its own thumb on the scale showing.
     Only two means are needed, so it appears at the reveal — the point is to catch the
     trick while the naive verdict still stands."""
+    # No page label over this one: the sheet opens with its own header, and Streamlit
+    # measured the label's box at 2px here, which slid the text under the sheet.
     chart = render_headline_chart(group_means(inv.first_result))
     if chart:
-        st.markdown(
-            '<div class="pi-vlabel">The chart the rumour would have used</div>',
-            unsafe_allow_html=True,
-        )
         st.iframe(chart, height=300)
 
 

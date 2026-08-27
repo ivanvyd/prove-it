@@ -370,9 +370,23 @@ DESK_CSS = """
 .pi-closed-line .v-holds { color:var(--green); }
 
 /* --- what lies below the desk ------------------------------------------------------ */
-[class*="st-key-below"] { padding:18px clamp(12px,2.2vw,30px) 40px; }
-[class*="st-key-below"] [data-testid="stVerticalBlock"] { gap:8px !important; }
-[class*="st-key-below"] iframe { display:block; }
+/* The desk continues: everything under the panels is a paper object laid on the same
+   wood, not a slab floating in the dark. The charts and exhibit strips are cream sheets
+   already; the wood and the shadows under them are put here. */
+[class*="st-key-below"] { padding:26px clamp(16px,3vw,44px) 48px;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,230,180,.05), transparent 60%),
+    repeating-linear-gradient(94deg, rgba(0,0,0,.13) 0 2px, transparent 2px 26px,
+      rgba(255,240,200,.02) 26px 27px, transparent 27px 90px),
+    linear-gradient(180deg, var(--desk-mid), var(--desk-mid));
+  box-shadow:inset 0 12px 22px rgba(0,0,0,.42), inset 0 -14px 22px rgba(0,0,0,.3); }
+[class*="st-key-below"] [data-testid="stVerticalBlock"] { gap:14px !important; }
+[class*="st-key-below"] iframe { display:block;
+  filter:drop-shadow(0 14px 22px rgba(0,0,0,.5)); }
+/* Section tags on the wood, with no margins: Streamlit pins each element's box to the
+   bare line it measured, and a margin overflows it straight under the next sheet — which
+   is how "The chart the rumour would have used" lost its lower half. */
+[class*="st-key-below"] .pi-vlabel { margin:0; color:var(--gold-pale); }
 
 /* --- narrow: the design's `_layout()` for the desk ---------------------------------- */
 @media (max-width: 999px) {

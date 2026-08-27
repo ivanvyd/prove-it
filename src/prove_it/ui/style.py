@@ -328,10 +328,11 @@ _CSS = """
   background-color:var(--room);
   background-image:
     radial-gradient(ellipse 78% 62% at 50% 44%, transparent 44%, rgba(0,0,0,.72) 100%),
+    radial-gradient(ellipse 24px 14px at 50% 122px, var(--shade) 52%,
+      var(--shade-deep) 66%, transparent 69%),
     radial-gradient(circle 13px at 50% 137px, var(--bulb), var(--bulb-warm) 55%,
       rgba(242,200,119,.25) 78%, transparent 82%),
     radial-gradient(circle 58px at 50% 137px, rgba(242,200,119,.34), transparent 72%),
-    radial-gradient(ellipse 23px 13px at 50% 112px, var(--shade) 60%, transparent 62%),
     linear-gradient(180deg, var(--cord), var(--cord-lit)),
     radial-gradient(ellipse 46% 58% at 50% 18%, rgba(238,196,118,.17),
       rgba(238,196,118,.055) 46%, transparent 72%),

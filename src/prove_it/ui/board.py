@@ -440,16 +440,20 @@ def render_board(
       // in a loop: the strings overlay spans the full board and a loop chasing "nothing
       // touches the bottom" chased it forever.
       if (!narrow()) {{
-        var b = el('er-board'), bh = b ? b.offsetHeight : 0, want2 = want;
+        var b = el('er-board'), bh = b ? b.offsetHeight : 0;
+        var chrome = f.getBoundingClientRect().height - bh;  // the frame around the cork
+        var boardNeed = bh ? Math.max(bh, want - chrome) : 0;
         var ids = ['er-claim', 'er-reason', 'er-warrant', 'er-bag', 'er-strip',
                    'er-conv', 'er-retrial', 'er-tag'];
         for (var i = 0; i < ids.length && bh; i++) {{
-          var it = el(ids[i]); if (!it || !it.offsetHeight) continue;
+          var it = el(ids[i]); if (!it) continue;
+          var h = it.getBoundingClientRect().height;  // rect, so a card's tilt counts
+          if (!h) continue;
           var frac = it.offsetTop / bh;
           if (frac >= 0.98) continue;
-          want2 = Math.max(want2, (it.offsetHeight + 26) / (1 - frac));
+          boardNeed = Math.max(boardNeed, (h + 26) / (1 - frac));
         }}
-        f.style.height = Math.ceil(want2) + 'px';
+        if (bh) f.style.height = Math.ceil(boardNeed + chrome) + 'px';
       }}
     }} catch (err) {{ /* cross-origin: keep the height Python asked for */ }}
   }}
