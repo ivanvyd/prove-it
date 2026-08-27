@@ -143,14 +143,14 @@ Measured against WCAG 2.2 AA in a real browser across all five screens, not asse
 - **Contrast.** Eight pairs were below the floor and are now above it, including the
   "offline demo" caption at 2.97:1, the sealed bag's own labels at 3.32:1, and Streamlit's
   stock info box at 2.05:1 — that last one on the sentence the product exists to deliver.
-  `tests/test_contrast.py` computes all 21 pairs and fails the build if a token drifts.
+  `tests/test_contrast.py` computes all 55 pairs and fails the build if a token drifts.
 - **Keyboard.** Every explainable part of a query is focusable and announces its note; the
   estimate ruler takes arrows, Home and End as well as a drag.
 - **Screen readers.** The explanation strip is a polite live region, the redacted digits on
   the sealed bag are `aria-hidden` (a listener gains nothing from "black-square
   black-square"), and the page now has a real `h1` and an `h2` per case.
-- **Targets.** The stake control's own dot was 13px. The row is now 34px, because a child
-  choosing a stake on a tablet should not be able to mis-tap their own bet.
+- **Targets.** The stake control's own dot was 13px. The stakes are 66px coins now, because
+  a child choosing a stake on a tablet should not be able to mis-tap their own bet.
 - **Motion.** Every animation — the folder opening, the verdict slam, the query highlight —
   is off under `prefers-reduced-motion`.
 
