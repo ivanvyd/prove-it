@@ -432,6 +432,25 @@ def render_board(
       var want = narrow() ? document.documentElement.scrollHeight
                           : Math.max(D.height, document.documentElement.scrollHeight);
       f.style.height = Math.ceil(want) + 'px';
+      // The board crops what scrollHeight cannot see: every item sits absolutely inside
+      // overflow:hidden cork, so a tall reason column pokes past the bottom without
+      // growing the document. Items are placed by a percentage of the board, so for an
+      // item of height h at top t% the board clears it at H = h / (1 - t) — solve that
+      // for each pinned item directly and take the tallest demand. Solving beats growing
+      // in a loop: the strings overlay spans the full board and a loop chasing "nothing
+      // touches the bottom" chased it forever.
+      if (!narrow()) {{
+        var b = el('er-board'), bh = b ? b.offsetHeight : 0, want2 = want;
+        var ids = ['er-claim', 'er-reason', 'er-warrant', 'er-bag', 'er-strip',
+                   'er-conv', 'er-retrial', 'er-tag'];
+        for (var i = 0; i < ids.length && bh; i++) {{
+          var it = el(ids[i]); if (!it || !it.offsetHeight) continue;
+          var frac = it.offsetTop / bh;
+          if (frac >= 0.98) continue;
+          want2 = Math.max(want2, (it.offsetHeight + 26) / (1 - frac));
+        }}
+        f.style.height = Math.ceil(want2) + 'px';
+      }}
     }} catch (err) {{ /* cross-origin: keep the height Python asked for */ }}
   }}
   function settle() {{ fit(); strings(); }}

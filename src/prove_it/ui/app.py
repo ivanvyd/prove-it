@@ -358,9 +358,6 @@ def gap_estimate(inv: Investigation) -> float | None:
     slot = f"guess-{inv.run_key}"
     held = st.session_state.get(slot)
 
-    st.markdown(
-        '<div class="pi-vlabel">Mark the gap &mdash; before you look</div>', unsafe_allow_html=True
-    )
     marked = gap_mark(
         prompt=spec.prompt,
         lo=spec.lo,
@@ -395,47 +392,49 @@ def wager_panel(inv: Investigation) -> None:
 
     st.markdown(wager_head("Does this claim survive a <b>fair</b> check?"), unsafe_allow_html=True)
 
-    # A single centred vertical flow: the slips, then the estimate, then the stake coins,
-    # then the seal — each step under the last. The design draws these in three columns on a
-    # wide desk, but the desk's middle column is only ~740px even at 1280, too narrow for
-    # three comfortable columns, and Streamlit collapsed them inconsistently — leaving the
-    # seal floating lower-left, out of line with the coins. A vertical stack reads the same
-    # at every width and keeps the order the wager depends on: call, stake, then commit.
-    for call in calls:
-        on = picked == call.name
-        with st.container(key=f"slip-{call.name}-{'on' if on else 'off'}"):
-            if st.button(call.value, key=f"pick-{call.name}", width="stretch"):
-                st.session_state[pick_slot] = call.name
-                st.rerun()
-    guess = gap_estimate(inv)
-
-    st.markdown('<div class="pi-stake-label">Stake</div>', unsafe_allow_html=True)
-    # A horizontal container rather than st.columns(3): three equal columns each took a third
-    # of the panel and left the coins spread edge to edge. A centred horizontal row keeps
-    # them a tight group.
-    with st.container(key="coins", horizontal=True, horizontal_alignment="center", gap="small"):
-        for option in Stake:
-            on = staked == option.name
-            with st.container(key=f"coin-{option.name}-{'on' if on else 'off'}"):
-                if st.button(
-                    f"{option.label} **×{option.multiplier}**", key=f"stake-{option.name}"
-                ):
-                    st.session_state[stake_slot] = option.name
+    # Two columns, the way a desk lays it out: the call on the left — slips, then the
+    # estimate — and the stake on the right, coins over the seal. Wide, not tall: a
+    # single-column tower left the panel three screens deep with the seal at the bottom.
+    # On a narrow screen Streamlit stacks the columns and the tower returns, which is
+    # right on a phone.
+    slips_col, stake_col = st.columns([1.45, 1], gap="large")
+    with slips_col:
+        for call in calls:
+            on = picked == call.name
+            with st.container(key=f"slip-{call.name}-{'on' if on else 'off'}"):
+                if st.button(call.value, key=f"pick-{call.name}", width="stretch"):
+                    st.session_state[pick_slot] = call.name
                     st.rerun()
-    st.markdown(
-        '<div class="pi-stake-note">Sure &amp; wrong is the expensive kind of wrong</div>',
-        unsafe_allow_html=True,
-    )
+        guess = gap_estimate(inv)
 
-    ready = picked is not None and staked is not None
-    with st.container(key="seal"):
-        if st.button("Break the seal", key="break-seal", disabled=not ready):
-            assert picked is not None and staked is not None
-            inv.commit_call(Call[picked], Stake[staked], guess)
-            st.session_state.scroll_to_top = True
-            st.rerun()
-    hint = seal_hint(picked=picked is not None, staked=staked is not None)
-    st.markdown(f'<div class="pi-seal-hint">{hint}</div>', unsafe_allow_html=True)
+    with stake_col:
+        st.markdown('<div class="pi-stake-label">Stake</div>', unsafe_allow_html=True)
+        # A horizontal container rather than st.columns(3): three equal columns each took
+        # a third of the panel and left the coins spread edge to edge. A centred
+        # horizontal row keeps them a tight group.
+        with st.container(key="coins", horizontal=True, horizontal_alignment="center", gap="small"):
+            for option in Stake:
+                on = staked == option.name
+                with st.container(key=f"coin-{option.name}-{'on' if on else 'off'}"):
+                    if st.button(
+                        f"{option.label} **×{option.multiplier}**", key=f"stake-{option.name}"
+                    ):
+                        st.session_state[stake_slot] = option.name
+                        st.rerun()
+        st.markdown(
+            '<div class="pi-stake-note">Sure &amp; wrong is the expensive kind of wrong</div>',
+            unsafe_allow_html=True,
+        )
+
+        ready = picked is not None and staked is not None
+        with st.container(key="seal"):
+            if st.button("Break the seal", key="break-seal", disabled=not ready):
+                assert picked is not None and staked is not None
+                inv.commit_call(Call[picked], Stake[staked], guess)
+                st.session_state.scroll_to_top = True
+                st.rerun()
+        hint = seal_hint(picked=picked is not None, staked=staked is not None)
+        st.markdown(f'<div class="pi-seal-hint">{hint}</div>', unsafe_allow_html=True)
 
 
 def call_chit(inv: Investigation) -> str:

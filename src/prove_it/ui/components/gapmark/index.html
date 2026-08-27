@@ -60,6 +60,7 @@ function fmt(v) {
   return v.toFixed(dp);
 }
 
+var lastH = 0;
 function paint() {
   var pct = (frac == null ? 0 : frac) * 100;
   fill.style.width = pct + "%";
@@ -68,6 +69,11 @@ function paint() {
   document.getElementById("value").textContent = frac == null ? "—" : fmt(value());
   track.setAttribute("aria-valuenow", frac == null ? 0 : Math.round(value()));
   root.classList.toggle("is-set", frac != null);
+  // If painting reflowed the head anyway, resize the frame NOW — setFrameHeight is a
+  // pure resize, not a rerun — instead of on the commit rerun, where the late growth
+  // shoved everything under the card down mid-interaction.
+  var h = document.documentElement.scrollHeight;
+  if (h !== lastH) { lastH = h; setHeight(h); }
 }
 
 // Report only on release, never on every pixel: each value that reaches Python is a
@@ -137,6 +143,10 @@ function onRender(event) {
 
   document.getElementById("prompt").textContent = a.prompt || "";
   document.getElementById("unit").textContent = a.unit || "";
+  // Reserve the widest value the scale can show, so the readout going from "—" to a
+  // number never widens the head, re-wraps it, and changes the component's height
+  // mid-drag. Mono font: ch is exact.
+  document.getElementById("value").style.minWidth = fmt(CFG.hi).length + "ch";
   document.getElementById("lo").textContent = a.lo_label || "";
   document.getElementById("hi").textContent = a.hi_label || "";
 
@@ -178,7 +188,8 @@ window.addEventListener("load", function () {
     text-transform:uppercase; color:var(--pencil); }
   .gm-val { font-family:var(--mono); font-size:13px; color:var(--pencil); }
   .gm-val b { font-family:var(--mono); font-size:24px; color:var(--ink);
-    font-variant-numeric:tabular-nums; margin-right:2px; }
+    font-variant-numeric:tabular-nums; margin-right:2px;
+    display:inline-block; text-align:right; }
   #root:not(.is-set) .gm-val b { color:var(--pencil); }
 
   /* 44px tall, with the visible rule still a 2px line through the middle. The hit area was

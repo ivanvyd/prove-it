@@ -225,18 +225,23 @@ DESK_CSS = """
 [class*="st-key-panel-"] { position:relative; background:rgba(20,16,10,.55);
   border:1px solid rgba(201,179,126,.35); border-radius:6px; padding:18px clamp(14px,2vw,22px);
   width:100%; }
-/* The three columns — slips, stake, seal — centred against each other, and each one's own
-   contents centred, so nothing floats out of line when they sit side by side or when the
-   panel narrows and they stack. */
-[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] { gap:16px 20px !important;
-  align-items:center !important; flex-wrap:wrap !important; }
-[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-  display:flex; flex-direction:column; align-items:center; }
+/* The wager row: the call (slips + estimate) on the left and the stake (coins + seal) on
+   the right — wide, not tall. `:has(stColumn)` picks the columns row and not the coins
+   row, which is its own horizontal container. */
+[class*="st-key-panel-"] [data-testid="stHorizontalBlock"]:has([data-testid="stColumn"]) {
+  gap:16px 24px !important; align-items:stretch !important; }
+/* Streamlit sizes columns with its own gap in the calc; a wider forced gap pushed the two
+   over 100% and wrapped them into the very tower this row exists to avoid. Above phone
+   width the row may never wrap; below it, wrapping IS the stacking. */
+@media (min-width:700px) {
+  [class*="st-key-panel-"] [data-testid="stHorizontalBlock"]:has([data-testid="stColumn"]) {
+    flex-wrap:nowrap !important; }
+}
 [class*="st-key-panel-"] [data-testid="stVerticalBlock"] { gap:7px !important; }
-/* The slips column carries the estimate too, so it keeps its full width; the stake and
-   seal columns hug their content and sit centred. */
-[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child {
-  align-items:stretch; }
+/* The stake column centres its stack against the slips beside it. */
+[class*="st-key-panel-"] [data-testid="stColumn"]:last-child > * { height:100%; }
+[class*="st-key-panel-"] [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"]:first-child {
+  justify-content:center; height:100%; }
 .pi-wager-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px 16px;
   flex-wrap:wrap; margin-bottom:8px; }
 .pi-wager-title { font-family:var(--f-type); font-size:15px; letter-spacing:.16em;
@@ -316,11 +321,9 @@ DESK_CSS = """
 [class*="st-key-coin-CERTAIN"][class*="-on"] .stButton > button { outline-color:var(--pin-red); }
 [class*="st-key-coin-"] .stButton > button:focus-visible { outline:3px solid var(--gold-lit);
   outline-offset:3px; }
-/* The wager is a single centred vertical flow: slips, estimate, stake coins, seal. Capped
-   and centred so the slips do not run the full width of a desktop desk, and everything
-   below them lines up on the same centre line. */
-[class*="st-key-panel-wager"] > [data-testid="stVerticalBlock"] {
-  max-width:520px; margin:0 auto; align-items:center; }
+/* The panel itself is capped and centred on a wide desk; the two-column row inside does
+   the layout. */
+[class*="st-key-panel-wager"] { max-width:960px; margin:0 auto; }
 [class*="st-key-panel-wager"] [class*="st-key-slip-"] { width:100%; }
 [class*="st-key-panel-wager"] .stElementContainer:has(> .pi-stake-label),
 [class*="st-key-panel-wager"] .stElementContainer:has(> .pi-stake-note),
