@@ -26,8 +26,18 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLISHED = [
     ROOT / "README.md",
     ROOT / "docs" / "project-story.md",
-    ROOT / "docs" / "demo-script.md",
 ]
+
+# The demo script is production scaffolding and no longer ships with the repository, so it
+# is not in PUBLISHED — nothing a reader can reach quotes from it. It is still worth
+# checking where it exists, because the numbers in it are what someone reads aloud on
+# camera, and this guard has already caught a wrong timeout and the wrong case's gap in it.
+# So: checked on the machine that holds it, skipped in a clone that does not. That is the
+# guard running everywhere it can do its job, not a guard being quieted.
+DEMO_SCRIPT = ROOT / "docs" / "demo-script.md"
+needs_demo_script = pytest.mark.skipif(
+    not DEMO_SCRIPT.exists(), reason="demo-script.md is local-only production scaffolding"
+)
 
 # Values that were published at some point and are now wrong. If one reappears, a document
 # has been reverted or copied from an old draft.
@@ -155,9 +165,10 @@ def test_the_story_quotes_the_axis_label_the_chart_actually_draws() -> None:
     )
 
 
+@needs_demo_script
 def test_the_demo_script_quotes_the_same_axis_floor() -> None:
     floor = _rendered_axis_floor()
-    script = (ROOT / "docs" / "demo-script.md").read_text(encoding="utf-8")
+    script = DEMO_SCRIPT.read_text(encoding="utf-8")
     assert script.count(floor) >= 2, (
         f"the demo script should name the rendered axis floor {floor} where it cues the chart"
     )
@@ -167,9 +178,10 @@ def test_the_published_overlap_matches_the_computed_one() -> None:
     """The one statistic the app states to a child in its own voice."""
     percent = _rendered_overlap_percent()
     story = (ROOT / "docs" / "project-story.md").read_text(encoding="utf-8")
-    script = (ROOT / "docs" / "demo-script.md").read_text(encoding="utf-8")
     assert percent in story, f"the story should quote an overlap of {percent}"
-    assert percent in script, f"the demo script should quote an overlap of {percent}"
+    if DEMO_SCRIPT.exists():
+        script = DEMO_SCRIPT.read_text(encoding="utf-8")
+        assert percent in script, f"the demo script should quote an overlap of {percent}"
 
 
 # -- identifiers quoted in the prose -------------------------------------------------
@@ -243,12 +255,13 @@ def test_every_case_that_asks_for_an_estimate_can_be_answered_on_its_own_ruler()
         )
 
 
+@needs_demo_script
 def test_the_demo_script_overshoot_is_above_the_real_gap_it_is_shot_against() -> None:
     """The script tells the presenter to place a deliberate overshoot and then read the
     real number back. Written once with the wrong case's gap in it — the beat is shot on
     Berkeley, whose gap is 14.2, and it quoted the maths case's 4.5.
     """
-    script = (ROOT / "docs" / "demo-script.md").read_text(encoding="utf-8")
+    script = DEMO_SCRIPT.read_text(encoding="utf-8")
     assert "14.2" in script or "fourteen" in script, (
         "the estimate beat is shot on Berkeley; its real pooled gap must be the number read back"
     )
@@ -345,7 +358,8 @@ def test_the_published_genie_timeout_is_the_one_the_client_waits() -> None:
     worse one to leave in the section whose whole purpose is being honest about the limits.
     """
     stated = f"{DEFAULT_TIMEOUT_SECONDS:.0f}-second"
-    for path in (ROOT / "README.md", ROOT / "docs" / "demo-script.md"):
+    targets = [ROOT / "README.md"] + ([DEMO_SCRIPT] if DEMO_SCRIPT.exists() else [])
+    for path in targets:
         name = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8")
         for stale in ("five-minute", "five minute", "5-minute"):

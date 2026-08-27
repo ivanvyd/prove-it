@@ -29,3 +29,8 @@ data/
 docs/plan-v2.md
 docs/plan-v3.md
 HANDOVER.md
+
+# The demo video shot list — production scaffolding, not part of the product. Local only:
+# it names scope decisions and dates, and a public repo should carry the app and its
+# evidence, not the notes for filming it.
+docs/demo-script.md

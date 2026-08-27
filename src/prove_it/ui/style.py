@@ -71,7 +71,34 @@ PALETTE = {
     "wood": "#503823",
     "wood-mid": "#3D2A1A",
     "wood-deep": "#2A1D10",
+    # The corkboard a case is worked on, and the wooden frame around it.
+    #
+    # The design's gradient runs #B08A55 -> #9C7743 -> #8F6C3B. The two darker stops are
+    # lifted here because ink measures 4.19:1 on the design's darkest end, under the floor —
+    # and on a board where only ink clears AA at all, text near the bottom would have been
+    # the unreadable part. Lifted to the least that clears 4.5 across the whole span.
+    "cork": "#B08A55",
+    "cork-mid": "#A88048",
+    "cork-deep": "#A87F45",
     "cork-frame": "#5E4128",
+    # The folder itself: a tan flap over a darker body, a brass stud, and the sheet inside on
+    # the same cream the rest of the app's documents use.
+    #
+    # The flap is 15% lighter than the design file's #C39A5E/#B08748 and the small ink 1%
+    # darker. Measured, not preferred: the design's own pairing puts the folder's mono labels
+    # at 4.23:1 on the light end and 3.34:1 on the dark, both under the 4.5 floor for text
+    # this size, on the card a ten-year-old reads first. This is the smallest departure that
+    # clears AA on both ends of the gradient while keeping the design's hue and its two
+    # distinct ink weights; darkening the ink instead collapsed both weights onto the same
+    # value and took the hierarchy with it.
+    "folder": "#E2B26D",
+    "folder-deep": "#CC9C53",
+    "folder-tab": "#D4A35E",
+    "folder-ink": "#33281A",
+    "folder-ink-soft": "#48381D",
+    "folder-stud": "#D8B276",
+    "folder-stud-rim": "#8A6A38",
+    "folder-sheet-ink": "#6E6448",
     "chrome": "#1B2027",
     "chrome-line": "#4A5058",
     "manila": "#EFE4C4",
@@ -90,6 +117,8 @@ PALETTE = {
     "slate": "#3E4348",
     "bone": "#F0EBDD",
     "ash": "#9BA3AD",
+    # The design's secondary prose colour on the dark ground, one step brighter than `ash`.
+    "mist": "#C7CBCF",
     "gold": "#C9B37E",
     "gold-deep": "#8A6524",
     "gold-bar": "#C9A94E",
@@ -196,42 +225,65 @@ _CSS = """
    The lamp is deliberately anchored to the top centre in `vw`/`vh` rather than to the sheet:
    a light source that tracks the document reads as a glow effect, and one that stays put
    reads as a lamp. */
+/* The whole archive, as one stack of background layers on the app shell.
+   It was a div of positioned children until a measurement showed why that cannot work here:
+   Streamlit gives no way to render outside the block container, and its `stVerticalBlock`
+   carries `z-index:1`, which makes a stacking context that traps a `z-index:-1` child inside
+   it — so the room painted over the corkboard it was supposed to sit behind, and every word
+   on the board went dark-on-dark. A background on `.stApp` paints behind all content by
+   construction and nothing downstream can trap it.
+   Topmost layer first: vignette, bulb, glow, shade, cord, light cone, desk lip, desk grain,
+   desk, the two cabinets, then the wall. */
 .stApp {
-  background:
-    radial-gradient(ellipse 46% 30% at 50% -4%, rgba(255,222,150,.16), transparent 68%),
-    radial-gradient(ellipse 120% 80% at 50% 42%, var(--room-lift), transparent 70%),
-    radial-gradient(ellipse 90% 70% at 50% 120%, rgba(80,56,35,.5), transparent 72%),
-    var(--room);
+  background-color:var(--room);
+  background-image:
+    radial-gradient(ellipse 78% 62% at 50% 44%, transparent 44%, rgba(0,0,0,.72) 100%),
+    radial-gradient(circle 13px at 50% 137px, #FFF3D0, #F2C877 55%,
+      rgba(242,200,119,.25) 78%, transparent 82%),
+    radial-gradient(circle 58px at 50% 137px, rgba(242,200,119,.34), transparent 72%),
+    radial-gradient(ellipse 23px 13px at 50% 112px, #3A4048 60%, transparent 62%),
+    linear-gradient(180deg, #2A313A, var(--chrome-line)),
+    radial-gradient(ellipse 46% 58% at 50% 18%, rgba(238,196,118,.17),
+      rgba(238,196,118,.055) 46%, transparent 72%),
+    linear-gradient(180deg, rgba(255,230,180,.22), transparent),
+    repeating-linear-gradient(94deg, rgba(0,0,0,.13) 0 2px, transparent 2px 26px,
+      rgba(255,240,200,.02) 26px 27px, transparent 27px 90px),
+    linear-gradient(180deg, #4A3421 0%, var(--wood-mid) 30%, #2E1F12 100%),
+    linear-gradient(90deg, #171D24, #10151B),
+    linear-gradient(270deg, #171D24, #10151B),
+    linear-gradient(180deg, #10151C 0%, #131920 42%, #0D1116 62%, #0A0D11 100%);
+  background-size:
+    100% 100%,                /* vignette */
+    100% 100%,                /* bulb */
+    100% 100%,                /* glow */
+    100% 100%,                /* shade */
+    2px 108px,                /* cord */
+    min(1150px, 120vw) 70%,   /* cone */
+    100% 5px,                 /* desk lip */
+    100% 46%,                 /* desk grain */
+    100% 46%,                 /* desk */
+    min(230px, 16vw) 54%,     /* left cabinet */
+    min(250px, 17vw) 54%,     /* right cabinet */
+    100% 100%;                /* wall */
+  background-position:
+    center, center, center, center,
+    center top,               /* cord */
+    center 130px,             /* cone */
+    left 54%,                 /* desk lip */
+    left bottom, left bottom, /* desk grain, desk */
+    -40px 14%, calc(100% + 60px) 12%,
+    center;
+  background-repeat:no-repeat;
   background-attachment:fixed; }
 
-/* The cone the lamp throws, and the vignette pulling the corners of the room down. Both
-   hang off the app shell rather than off an injected element: a div emitted into the page
-   is a child of the *sheet*, so its vignette painted over the case file and greyed every
-   word on it. On `.stApp` they sit in the shell's own stacking context, underneath the
-   `z-index` the rule below gives the document.
-
-   Decoration with nothing to say, and `pointer-events:none` so neither can intercept a
-   click meant for a folder. */
-.stApp::before {
-  content:""; position:fixed; left:50%; top:-14vh; width:min(920px, 92vw); height:62vh;
-  transform:translateX(-50%); pointer-events:none; z-index:0;
-  background:linear-gradient(180deg, rgba(255,226,160,.14),
-    rgba(255,214,130,.05) 46%, transparent 78%);
-  clip-path:polygon(41% 0, 59% 0, 96% 100%, 4% 100%);
-  filter:blur(14px); animation:pi-lamp 7s ease-in-out infinite; }
-.stApp::after {
-  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
-  background:radial-gradient(ellipse 78% 62% at 50% 44%, transparent 44%, rgba(0,0,0,.66) 100%); }
-/* A lamp that never settles is movement in the corner of the eye for as long as the page is
-   open. The glow stays; the flicker goes. */
-@keyframes pi-lamp { 0%,100% { opacity:1; } 43% { opacity:.86; } 71% { opacity:.95; } }
+/* The design's bulb flickers. Dropped rather than reproduced: on a background layer there is
+   nothing to animate without repainting the whole shell, and a light that never settles is
+   perpetual movement behind text a child is reading. The glow stays; the failing tube goes.
+   This is a deliberate deviation from the design file, not an omission. */
 @media (prefers-reduced-motion: reduce) {
-  .stApp::before { animation:none; }
   /* The source link's hover fade, on the same terms as the copy button's in query_panel.py. */
   .pi-mast-src { transition:none; }
 }
-/* The document sits above the light, not under it. */
-.stApp > * { position:relative; z-index:1; }
 
 /* Streamlit's own header — a 60px bar carrying a "Deploy" button and a hamburger — sits
    over the top of the page. Measured, not assumed: it is there at every viewport. On a
@@ -267,44 +319,53 @@ header[data-testid="stHeader"] { display:none; }
 /* The whole page is one case sheet laid on the desk: cream, squared off, with a shadow
    that lifts it. The dark ground shows only at the edges, which is what makes the sheet
    read as an object rather than as the window's background. */
-/* The board itself: the case file, in a wooden frame, standing in the dark room above. The
-   frame is a border rather than a wrapper element because Streamlit owns this node and any
-   wrapper would have to be injected around it — the border draws the same object for one
-   declaration and cannot come adrift from the content. */
+/* There is no page. The room IS the page: the archive is a dark space with objects lying in
+   it, and every document — folder, warrant, evidence bag, result table — is a lit thing on
+   that dark ground rather than ink on a sheet.
+   An earlier attempt kept the old cream sheet and put a wooden frame round it. That is not
+   this design; it is the previous one wearing a border, and it read as exactly that. */
 .stMainBlockContainer, .block-container {
-  /* Narrowed from a flat 1240px so the room is always visible around the case file. At
-     1280 the sheet was 1240 of it and the dark ground survived as a two-pixel line, which
-     reads as a rendering artefact rather than as a room. The `min()` keeps the margin
-     proportional instead of collapsing on the first viewport narrower than the cap. */
-  max-width:min(1200px, calc(100vw - 104px)); margin:26px auto 44px;
-  background:var(--sheet); color:var(--ink);
-  padding:0 56px 72px !important; border-radius:3px;
-  border:9px solid var(--cork-frame);
-  border-image:linear-gradient(150deg, var(--wood), var(--wood-deep) 38%,
-    var(--cork-frame) 62%, var(--wood-mid)) 1;
-  box-shadow:0 28px 70px rgba(0,0,0,.66), 0 2px 0 rgba(255,226,160,.16) inset;
-  /* The masthead bleeds to the sheet's edges with a negative margin; without this the
-     bleed pushes a horizontal scrollbar onto the page. */
+  max-width:min(1240px, calc(100vw - 48px)); margin:0 auto;
+  background:transparent; color:var(--bone);
+  padding:0 24px 72px !important;
+  /* The masthead bleeds past these paddings with a negative margin; without this the bleed
+     pushes a horizontal scrollbar onto the page. */
   overflow-x:hidden; }
-html, body, [class*="css"] { font-family:var(--f-body); color:var(--ink); }
-h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; color:var(--ink); }
-.stApp, .stMarkdown { color:var(--ink); }
-[data-testid="stCaptionContainer"] { color:var(--faint); }
+html, body, [class*="css"] { font-family:var(--f-body); color:var(--bone); }
+/* Headings sit on the room, so they are bone rather than ink. The exception is any heading
+   inside a document — those are handled where the document is styled. */
+h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; color:var(--bone); }
+.stApp, .stMarkdown { color:var(--bone); }
+[data-testid="stCaptionContainer"] { color:var(--ash); }
 
 /* --- the masthead ----------------------------------------------------------------- */
 /* A navy chrome bar across the top of the sheet, the way the design draws it: wordmark,
    a CASE FILES plate, and the run's numbers pushed to the right. */
-.pi-mast { display:flex; align-items:center; gap:18px; flex-wrap:nowrap;
-  background:var(--chrome); color:var(--bone); margin:0 -56px 26px;
-  padding:0 28px; height:56px; overflow:hidden; }
-/* An h1 rather than a span, so the document has a top-level heading — margin and line
-   height are reset because a browser's default h1 would push the 56px masthead open. */
-.pi-logo { font-family:var(--f-display); font-weight:700; font-size:19px; color:var(--bone);
-  margin:0; line-height:1.2; display:inline-block; }
-.pi-logo span { color:var(--gold); }
-.pi-plate { font-family:var(--f-mono); font-size:10px; letter-spacing:.22em;
-  border:1px solid var(--chrome-line); border-radius:2px; padding:3px 8px; color:var(--gold);
-  white-space:nowrap; }
+/* No chrome bar. The design has no masthead: the archive opens on a bordered plate at the
+   left and the run's numbers at the right, both floating on the room, so the eye goes
+   straight to the desk. The bar was the old design's furniture and it was the loudest thing
+   left in the room. Wrapping is allowed here rather than clipped — this row has no fixed
+   height to protect, so a narrow screen puts the numbers on their own line instead of
+   silently cutting the rank plate off the right edge, which is how this bar failed twice. */
+.pi-mast { display:flex; align-items:center; justify-content:space-between;
+  gap:10px 14px; flex-wrap:wrap; background:transparent; color:var(--bone);
+  margin:0 0 4px; padding:clamp(10px,2vh,20px) 0 0; min-height:44px; }
+/* The design's plate carries the whole name, so the h1 IS the plate — a bordered gold
+   nameplate on the wall rather than a wordmark beside a badge. It stays an h1 because the
+   document needs exactly one top-level heading and a screen-reader user pressing "1" has
+   to land somewhere. */
+/* `!important` on the size and weight for the same reason the block above needs it on the
+   family: Streamlit styles `h1` by a selector this cannot outrank, and without it the
+   nameplate renders at heading size and fills the wall. */
+.pi-logo { font-family:var(--f-mono) !important; font-weight:400 !important;
+  font-size:11px !important; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--gold) !important; margin:0; line-height:1.4;
+  display:inline-block; white-space:nowrap;
+  border:1px solid rgba(201,179,126,.5); border-radius:2px; padding:8px 14px;
+  background:linear-gradient(180deg, rgba(201,179,126,.14), rgba(201,179,126,.04)); }
+/* The old design split the name across two colours inside the wordmark. On the plate the
+   whole line is one colour, so this only has to stop inheriting a different one. */
+.pi-logo span { color:inherit; }
 /* The source link. Sized to the 24px floor WCAG 2.5.8 asks of a pointer target rather than
    to the 15px icon inside it, and it keeps a visible focus ring because it is the one
    control on the masthead a keyboard reaches. */
@@ -319,7 +380,10 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
    anchor's own `aria-label` keeps it named for anyone who cannot see the mark — which is
    why the name lives there rather than on the text this rule hides. */
 @media (max-width: 720px) { .pi-mast-src span { display:none; } }
-.pi-mast-spacer { flex:1; }
+/* The run's numbers and the source link, held together at the right so they wrap as one
+   group rather than the link peeling off on its own. */
+.pi-mast-right { display:inline-flex; align-items:center; gap:12px; flex-wrap:wrap;
+  justify-content:flex-end; }
 .pi-eyebrow { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.18em;
   text-transform:uppercase; color:var(--red); font-weight:600; }
 .pi-bigq { font-family:var(--f-display); font-size:44px; font-weight:700;
@@ -433,98 +497,224 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
 /* --- the docket: a drawer of case files -------------------------------------------- */
 .pi-lede { font-size:16.5px; line-height:1.65; color:var(--pencil); max-width:56ch;
   margin-bottom:30px; }
-/* Each case is a manila folder: a tab with its number, then the folder body. The tab is
-   drawn on the eyebrow so no extra markup is needed in app.py. */
-.pi-case-trick { display:inline-block; font-family:var(--f-mono); font-size:10.5px;
-  letter-spacing:.16em; text-transform:uppercase; color:#6B5D3F; font-weight:500;
-  background:var(--manila-tab); border:1px solid var(--manila-line); border-bottom:none;
-  border-radius:6px 6px 0 0; padding:8px 18px; margin:22px 0 0 18px; }
-/* The folder itself. The negative top margin tucks it under the tab. */
-.pi-case-claim { font-family:var(--f-display); font-size:23px; font-weight:700;
-  line-height:1.3; letter-spacing:-.01em; color:var(--ink);
-  background:var(--manila); border:1px solid var(--manila-line);
-  border-radius:0 4px 0 0; padding:22px 26px 14px; margin:0; min-height:2.3em;
-  box-shadow:0 2px 10px rgba(27,32,39,.08); }
-/* The source line continues the folder; the Open button below it closes the folder, so a
-   case reads as one object rather than a card with a control floating under it. */
-.pi-case-source { font-family:var(--f-mono); font-size:12px; line-height:1.65;
-  letter-spacing:.06em; color:#6E6042; background:var(--manila);
-  border:1px solid var(--manila-line); border-top:none;
-  padding:0 26px 16px; margin:0; min-height:3.2em; }
-/* The Open control, tucked into the bottom of its folder. Scoped to the docket by the
-   key prefix Streamlit puts on the element, so no other button on the app is affected. */
-.stElementContainer:has(.pi-case-source) + .stElementContainer .stButton > button,
-[class*="st-key-case-"] .stButton > button {
-  width:100%; margin:0; border-radius:0 0 4px 4px; border-color:var(--manila-line);
-  border-top:1px dashed var(--manila-line); background:var(--manila);
-  box-shadow:0 2px 10px rgba(27,32,39,.08); }
-/* Folders do not lie square on a desk. Each column is rotated by a different amount, the
-   way the design draws the drawer, so the docket reads as five physical objects someone
-   put down rather than as a grid of cards. The angles are the design's own. */
-/* The angle and the lift are separate custom properties composed into one transform, rather
-   than two rules overwriting each other's `transform`. That is what lets the reduced-motion
-   block below cancel the lift while leaving the angle alone: an earlier version set
-   `transform:none` on hover, which also stripped the resting rotation, so a reader who had
-   asked for less motion got the folder snapping from 2.6deg to square the instant a pointer
-   touched it — a jump, introduced by the rule meant to prevent jumps. */
-[data-testid="stColumn"]:has(.pi-case-claim) {
+/* --- scene two: the desk and the board ---------------------------------------------- */
+/* A case is worked on a corkboard in a wooden frame, not on the bare desk. The marker is
+   emitted by the case beats, so the archive keeps its dark room and only the screens that
+   hold a case get the board.
+
+   Nothing sits bare on the cork. Measured: the app's prose colour is 2.04:1 on #B08A55 and
+   only `ink` clears AA there at 5.16 — which is why the design pins every piece of content
+   to a card, and why the reasoning column below becomes one instead of floating. */
+.stMainBlockContainer:has(.pi-board), .block-container:has(.pi-board) {
+  background:linear-gradient(160deg, var(--cork), var(--cork-mid) 55%, var(--cork-deep));
+  border:clamp(9px,1.1vw,15px) solid var(--cork-frame);
+  border-image:linear-gradient(180deg, #5C4028, #4A3120) 1;
+  border-radius:6px; margin:14px auto 44px;
+  padding:0 clamp(16px,2.4vw,34px) 56px !important;
+  box-shadow:0 18px 60px rgba(0,0,0,.6), inset 0 0 80px rgba(40,24,8,.55); }
+/* The cork's own tooth. */
+.stMainBlockContainer:has(.pi-board)::before, .block-container:has(.pi-board)::before {
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    radial-gradient(rgba(60,38,16,.22) 1.2px, transparent 1.3px),
+    radial-gradient(rgba(255,230,190,.1) 1px, transparent 1.1px);
+  background-size:26px 26px, 34px 34px; background-position:0 0, 12px 9px; }
+.stMainBlockContainer:has(.pi-board), .block-container:has(.pi-board) { position:relative; }
+.stMainBlockContainer:has(.pi-board) > *, .block-container:has(.pi-board) > * {
+  position:relative; z-index:1; }
+/* The marker itself shows nothing. */
+.pi-board { display:none; }
+
+/* On the board, every word is either on a card or in ink. These are the ones that were
+   floating: the claim, the rail label and the custody line. */
+.pi-board ~ * .pi-claim, .stMainBlockContainer:has(.pi-board) .pi-claim,
+.stMainBlockContainer:has(.pi-board) h2 { color:var(--ink) !important;
+  text-shadow:0 1px 0 rgba(255,240,214,.25); }
+.stMainBlockContainer:has(.pi-board) .pi-rail-label,
+.stMainBlockContainer:has(.pi-board) .pi-vlabel { color:var(--ink); }
+.stMainBlockContainer:has(.pi-board) [data-testid="stCaptionContainer"] { color:var(--ink); }
+/* The header and the custody line ride on the board too, and the room's own gold measures
+   1.5:1 on cork. Everything up here goes to ink, which is the one colour that clears AA on
+   it, and the nameplate's wash goes with it. */
+.stMainBlockContainer:has(.pi-board) .pi-logo { color:var(--ink) !important;
+  border-color:rgba(51,40,26,.45); background:rgba(255,247,225,.28); }
+.stMainBlockContainer:has(.pi-board) .pi-hud,
+.stMainBlockContainer:has(.pi-board) .pi-hud-docket,
+.stMainBlockContainer:has(.pi-board) .pi-hud-rank,
+.stMainBlockContainer:has(.pi-board) .pi-hud-chips,
+.stMainBlockContainer:has(.pi-board) .pi-custody,
+.stMainBlockContainer:has(.pi-board) .pi-mast-src { color:var(--ink); }
+.stMainBlockContainer:has(.pi-board) .pi-hud-rank,
+.stMainBlockContainer:has(.pi-board) .pi-mast-src { border-color:rgba(51,40,26,.45); }
+.stMainBlockContainer:has(.pi-board) .pi-mast-src:hover { color:var(--busted); }
+/* Genie's reasoning is a document like the warrant beside it, so on the board it becomes a
+   pinned card. Matched on the column that holds the steps rather than wrapped in markup: a
+   Streamlit container created inside a column and written to afterwards re-emits that
+   column, which is what once put a second, greyed-out copy of a case on the docket. */
+.stMainBlockContainer:has(.pi-board) [data-testid="stColumn"]:has(.pi-step) {
+  background:var(--paper); border:1px solid var(--rule); border-radius:2px;
+  padding:14px 18px 4px; box-shadow:0 10px 26px rgba(0,0,0,.4);
+  align-self:flex-start; }
+/* Its own label rides on the card, so it goes back to the quiet ink it had on paper. */
+.stMainBlockContainer:has(.pi-board) [data-testid="stColumn"]:has(.pi-step) .pi-vlabel {
+  color:var(--pencil); }
+
+/* --- the archive's opening --------------------------------------------------------- */
+/* Centred under the lamp. The line lengths are capped in `ch` rather than px so the balance
+   holds at every size the clamp produces. */
+.pi-hero { text-align:center; padding:clamp(26px,6vh,76px) 8px clamp(20px,4vh,44px); }
+.pi-hero-where { font-family:var(--f-mono); font-size:clamp(10px,1.3vw,13px);
+  letter-spacing:.5em; text-transform:uppercase; color:var(--gold); margin:0;
+  /* The letter-spacing pushes the last glyph off centre; this puts it back. */
+  text-indent:.5em; }
+/* Centred explicitly rather than by inheritance: these are an h2 and a p inside a Streamlit
+   markdown block, and Streamlit sets its own alignment and margins on both, which left the
+   headline ranged against the left edge of a centred box. */
+.pi-hero-line { font-family:var(--f-display); font-size:clamp(28px,4.6vw,54px) !important;
+  font-weight:700; letter-spacing:-.01em; line-height:1.1; color:var(--bone);
+  margin:12px auto 0 !important; max-width:18ch; text-align:center; text-wrap:balance;
+  padding:0; text-shadow:0 4px 30px rgba(0,0,0,.6); }
+/* `!important` on the alignment for the same reason the headline needs it: Streamlit styles
+   `p` inside a markdown block by a selector this cannot outrank, and both of these sat
+   ranged left under a centred headline. */
+.pi-hero-sub { font-family:var(--f-display); font-size:clamp(16px,2vw,22px); font-style:italic;
+  color:var(--mist); margin:8px auto 0 !important; max-width:34ch;
+  text-align:center !important; text-wrap:balance; }
+.pi-hero-rule { font-family:var(--f-mono); font-size:clamp(10px,1.2vw,12px);
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ash); line-height:1.8;
+  margin:16px auto 0 !important; max-width:62ch; text-align:center !important;
+  text-wrap:balance; }
+.pi-hero-where { text-align:center !important; }
+
+/* The two standing facts, along the bottom of the archive. Both are checkable, which is why
+   they are chrome rather than copy: the first is what the build gate enforces, the second is
+   what having no account store means. */
+.pi-standing { display:flex; justify-content:space-between; gap:8px 22px; flex-wrap:wrap;
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ash); line-height:1.7; margin:38px 0 0;
+  border-top:1px solid rgba(155,163,173,.18); padding-top:16px; }
+
+/* --- the folder ------------------------------------------------------------------- */
+/* A closed case folder lying in the drawer: a tab, a sheet inside carrying the claim, and a
+   flap over the front carrying the case number and the trick. Reaching for it lifts the flap
+   and slides the sheet up, so the claim is what opening it reveals — which is the design's
+   whole gesture, and the reason the front says "The Paradox" rather than the claim itself.
+   Three layers, stacked in one positioned box so nothing depends on source order. */
+/* The drawer wraps. Streamlit columns do not answer to a breakpoint — asked for five they
+   give five at any width, and at 768px that meant five 128px slivers with their labels
+   wrapping to different heights. Turning the row into a wrapping flex of fixed-width
+   folders is what makes the docket responsive: five abreast on a desktop, two on a tablet,
+   one on a phone, and the folder itself the same object at every one of them. */
+[data-testid="stHorizontalBlock"]:has(.pi-folder) {
+  flex-wrap:wrap; justify-content:center; gap:18px; }
+[data-testid="stHorizontalBlock"]:has(.pi-folder) > [data-testid="stColumn"] {
+  flex:0 0 auto; width:230px; min-width:0; }
+
+/* A folder is an object with a shape. Stretched to fill a column it stopped being one and
+   became a banner, so it takes the design's own width and the column is sized to it. */
+.pi-folder { position:relative; height:186px; margin:26px auto 0; width:100%;
   --tilt:0deg; --lift:0px; --scale:1;
   transform:rotate(var(--tilt)) translateY(var(--lift)) scale(var(--scale));
-  transform-origin:50% 90%; transition:transform .32s cubic-bezier(.2,.8,.2,1); }
-/* Matched on a class the case card carries rather than on the column's position. Streamlit
-   renders each docket row as its own columns container, so `:nth-of-type` counts within the
-   row and resets: measured in a browser, all five folders drew at one of two angles and
-   three of these five never appeared at all. */
-[data-testid="stColumn"]:has(.pi-tilt-0) { --tilt:-2.6deg; }
-[data-testid="stColumn"]:has(.pi-tilt-1) { --tilt:-.6deg; }
-[data-testid="stColumn"]:has(.pi-tilt-2) { --tilt:1.4deg; }
-[data-testid="stColumn"]:has(.pi-tilt-3) { --tilt:2.6deg; }
-[data-testid="stColumn"]:has(.pi-tilt-4) { --tilt:3.8deg; }
-/* Hovering anywhere on a folder lifts it out of the drawer and the sheet inside slides up
-   far enough to be seen. The hover target is the column, because a folder is three
-   Streamlit elements — tab, cover and source line in one markdown block, then the Open
-   button — and lifting only one of them tears the object in half. The angle is deliberately
-   left alone: the design lifts and scales on hover and never squares the folder up. */
-[data-testid="stColumn"]:has(.pi-case-claim):hover,
-[data-testid="stColumn"]:has(.pi-case-claim):focus-within {
-  --lift:-14px; --scale:1.03; z-index:3; }
-/* The shadow deepens on hover but is deliberately NOT transitioned. `box-shadow` is not a
-   compositor property, so interpolating it repaints the folder on every frame for the whole
-   300ms. Traced on the docket: sweeping a pointer across the five folders cost ~200 extra
-   paints and ~320ms of raster over moving the pointer across plain text, and setting
-   reduced-motion barely dented it because the repaint is the shadow, not the movement. The
-   transform beside it stays animated — that one is compositor-only and measured free. */
-.pi-case-claim { position:relative; }
-/* The sheet inside the folder, peeking over its top edge. Behind the cover's background at
-   rest, so only the millimetre above the fold shows. */
-.pi-case-claim::before {
-  content:""; position:absolute; left:14%; right:9%; top:-4px; height:38px; z-index:-1;
-  background:var(--paper); border:1px solid var(--manila-line); border-radius:3px 3px 0 0;
-  box-shadow:0 -3px 8px rgba(27,32,39,.14);
-  transform:translateY(16px); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
-[data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim::before,
-[data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim::before {
-  transform:translateY(-15px); }
-[data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim,
-[data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim {
-  box-shadow:0 22px 42px rgba(0,0,0,.42); }
-/* A drawer of folders that jump when a pointer crosses them is exactly the motion a
-   vestibular disorder reacts to. The angle stays — it is identity, not animation — and
-   every movement goes. */
-@media (prefers-reduced-motion: reduce) {
-  [data-testid="stColumn"]:has(.pi-case-claim),
-  .pi-case-claim::before { transition:none; }
-  [data-testid="stColumn"]:has(.pi-case-claim):hover,
-  [data-testid="stColumn"]:has(.pi-case-claim):focus-within { --lift:0px; --scale:1; }
-  /* The peek stays tucked away rather than sliding, so nothing moves under the pointer. */
-  [data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim::before,
-  [data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim::before {
-    transform:translateY(16px); }
-}
-[data-testid="stColumn"]:has(.pi-case-claim):hover .stElementContainer .stButton > button,
-.stElementContainer:has(.pi-case-source) + .stElementContainer .stButton > button:hover,
-[class*="st-key-case-"] .stButton > button:hover {
+  transform-origin:50% 92%; transition:transform .34s cubic-bezier(.2,.9,.3,1.15); }
+/* The tab, sitting proud of the folder's top-left corner. */
+.pi-folder-tab { position:absolute; left:0; top:-15px; width:108px; height:22px;
+  background:var(--folder-tab); border-radius:5px 5px 0 0; z-index:1; }
+/* The sheet inside. Tucked down behind the flap at rest and never hidden: `display:none`
+   would take the claim out of the accessibility tree, and the claim is the case. */
+.pi-folder-sheet { position:absolute; left:11px; right:11px; top:-4px; bottom:26px;
+  background:var(--paper); border:1px solid var(--manila-line); border-radius:2px;
+  padding:13px 15px; box-sizing:border-box; z-index:2; overflow:hidden;
+  box-shadow:0 -4px 14px rgba(0,0,0,.28);
+  transform:translateY(30px); transition:transform .34s ease; }
+.pi-folder-claim { font-family:var(--f-display); font-size:16.5px; font-weight:700;
+  line-height:1.42; color:var(--ink); margin:0; }
+.pi-folder-source { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.07em;
+  line-height:1.6; color:var(--folder-sheet-ink); margin:7px 0 0; }
+/* The flap over the front. Hinged at the bottom, so lifting it reads as opening a cover
+   rather than as a card sliding away. */
+.pi-folder-flap { position:absolute; inset:0; z-index:3; display:flex;
+  flex-direction:column; gap:6px; padding:16px 18px; box-sizing:border-box;
+  background:linear-gradient(180deg, var(--folder), var(--folder-deep));
+  border-radius:0 4px 4px 4px; box-shadow:0 12px 26px rgba(0,0,0,.5);
+  transform-origin:bottom center; transition:transform .34s ease; }
+.pi-folder-no { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--folder-ink-soft); }
+.pi-folder-title { font-family:var(--f-display); font-size:19px; font-weight:700;
+  line-height:1.25; color:var(--folder-ink); }
+.pi-folder-shape { font-family:var(--f-mono); font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--folder-ink-soft); }
+/* The brass stud on the flap, bottom-left, the way the design draws it. */
+.pi-folder-stud { position:absolute; left:18px; bottom:14px; width:15px; height:15px;
+  border-radius:50%; border:2px solid var(--folder-stud-rim);
+  background:radial-gradient(circle at 35% 35%, var(--folder-stud), var(--folder-stud-rim)); }
+
+/* Folders do not lie square in a drawer. The angle is a custom property rather than a
+   `transform` of its own so the reduced-motion block can cancel the lift and leave the
+   angle standing: an earlier version set `transform:none` on hover, which stripped the
+   resting rotation too, so a reader who asked for less motion got the folder snapping
+   square the instant a pointer touched it — a jump, from the rule meant to prevent jumps.
+   Matched on a class the card carries, not `:nth-of-type` on the column: Streamlit renders
+   each docket row as its own columns container, so the count restarts every row and three
+   of these five angles never appeared at all. */
+[data-testid="stColumn"]:has(.pi-tilt-0) .pi-folder { --tilt:-2.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-1) .pi-folder { --tilt:-.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-2) .pi-folder { --tilt:1.4deg; }
+[data-testid="stColumn"]:has(.pi-tilt-3) .pi-folder { --tilt:2.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-4) .pi-folder { --tilt:3.8deg; }
+
+/* Reaching for a folder opens it. The hover target is the whole column, because a folder is
+   two Streamlit elements — the markdown block and the button under it — and lifting only
+   one of them tears the object in half. Focus does the same thing, so the reveal is
+   reachable by keyboard rather than being a pointer-only affordance. */
+[data-testid="stColumn"]:has(.pi-folder):hover .pi-folder,
+[data-testid="stColumn"]:has(.pi-folder):focus-within .pi-folder {
+  --lift:-12px; --scale:1.03; }
+[data-testid="stColumn"]:has(.pi-folder):hover,
+[data-testid="stColumn"]:has(.pi-folder):focus-within { z-index:3; }
+[data-testid="stColumn"]:has(.pi-folder):hover .pi-folder-flap,
+[data-testid="stColumn"]:has(.pi-folder):focus-within .pi-folder-flap {
+  transform:rotateX(-64deg); }
+[data-testid="stColumn"]:has(.pi-folder):hover .pi-folder-sheet,
+[data-testid="stColumn"]:has(.pi-folder):focus-within .pi-folder-sheet {
+  transform:translateY(0); }
+/* The flap hinges in three dimensions, so the column it lives in needs the depth. */
+[data-testid="stColumn"]:has(.pi-folder) { perspective:900px; }
+
+/* The Open control, the folder's bottom lip. Scoped by the key prefix Streamlit puts on the
+   element, so no other button on the app is touched. */
+[class*="st-key-case-"] .stButton > button {
+  width:100%; margin:0 auto;
+  border-radius:0 0 4px 4px;
+  border:1px solid var(--folder-deep); border-top:none;
+  background:var(--folder-deep); color:var(--folder-ink);
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  line-height:1.4; padding:6px 8px;
+  /* Every lip the same height whether its label wraps to one line or two: five folders
+     standing at five different heights is not a drawer, it is a bar chart. Sized to the
+     two-line case, which is the longest title at the widest the folder ever gets, and
+     centred so a one-line label sits in the middle of it rather than at the top. Well
+     clear of the 24px pointer-target floor. */
+  min-height:58px; display:flex; align-items:center; justify-content:center; }
+/* Streamlit puts a gap between every two elements. Between the folder and its own bottom
+   lip that gap is a seam through the middle of one object. */
+[class*="st-key-case-"] { margin-top:-8px; }
+[class*="st-key-case-"] .stButton > button:hover,
+[data-testid="stColumn"]:has(.pi-folder):hover [class*="st-key-case-"] .stButton > button {
   background:var(--ink); color:var(--bone); border-color:var(--ink); transform:none; }
+
+/* A drawer of folders that flip open as a pointer crosses them is exactly the motion a
+   vestibular disorder reacts to. The angle stays — it is identity, not animation — and
+   every movement goes. The claim has to stay reachable, so with motion off the sheet is
+   simply not covered: the flap drops out rather than swinging away. */
+@media (prefers-reduced-motion: reduce) {
+  .pi-folder, .pi-folder-sheet, .pi-folder-flap { transition:none; }
+  [data-testid="stColumn"]:has(.pi-folder):hover .pi-folder,
+  [data-testid="stColumn"]:has(.pi-folder):focus-within .pi-folder {
+    --lift:0px; --scale:1; }
+  [data-testid="stColumn"]:has(.pi-folder):hover .pi-folder-flap,
+  [data-testid="stColumn"]:has(.pi-folder):focus-within .pi-folder-flap {
+    transform:none; opacity:0; }
+}
 /* The scroll frame is a script with nothing to show. Hidden outright rather than left as a
    one-pixel row, which would still cost the block's gap under the masthead. One pixel
    rather than none because `st.iframe` rejects a height of zero.

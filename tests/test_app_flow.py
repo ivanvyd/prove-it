@@ -261,7 +261,7 @@ def test_a_finished_investigation_can_be_restarted() -> None:
     app = click(app, "Check another claim")
 
     assert not app.exception
-    assert "Pick a claim" in all_text(app)
+    assert "Rumours on the desk" in all_text(app), "the docket should be the screen showing"
 
 
 def test_typing_a_claim_does_not_submit_it_until_the_button_is_pressed() -> None:
@@ -271,7 +271,7 @@ def test_typing_a_claim_does_not_submit_it_until_the_button_is_pressed() -> None
 
     assert not app.exception
     assert "Result sealed" not in all_text(app), "the claim was sent before it was submitted"
-    assert "Pick a claim" in all_text(app)
+    assert "Rumours on the desk" in all_text(app), "the docket should be the screen showing"
 
 
 def test_a_typed_claim_is_sent_when_submitted() -> None:
@@ -362,7 +362,7 @@ def test_every_folder_in_the_drawer_sits_at_its_own_angle() -> None:
     that hardcoded a single tilt.
     """
     text = all_text(launch())
-    tilts = {n for n in range(5) if f"pi-case-trick pi-tilt-{n}" in text}
+    tilts = {n for n in range(5) if f"pi-folder pi-tilt-{n}" in text}
     assert len(tilts) == min(5, len(DOCKET)), f"expected a distinct tilt per case, got {tilts}"
 
 

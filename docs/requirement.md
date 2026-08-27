@@ -116,7 +116,7 @@ lesson works. Anyone who wants it has the contract above.
 | R10 | The app writes no SQL of its own, at any point | Repo-wide grep gate in tests |
 | R11 | A curated rumour deck is available as a fallback path if free text proves unreliable | Config flag toggles input mode |
 | R12 | Setup is reproducible from zero: notebook creates tables, docs give Genie space instructions | A second person can follow `docs/setup.md` |
-| R13 | The two non-code contest deliverables exist: a Community Articles project story and a demo | `docs/project-story.md`, `docs/demo-script.md` |
+| R13 | The two non-code contest deliverables exist: a Community Articles project story and a demo | `docs/project-story.md`; the demo shot list is local-only production scaffolding, gitignored |
 | R14 | Every query on screen carries Genie's own identifiers, unmodified, so the app's authorship claim is checkable against the Genie space's message history rather than self-asserted | `tests/test_custody.py`, `tests/test_custody_ui.py` |
 | R15 | The retrial visibly reports that it continued the first query's conversation, and never claims continuity it cannot show | `test_the_recorded_demo_really_is_one_conversation`, `test_a_missing_turn_never_claims_continuity` |
 | R16 | A run of the docket is scored: a call pays `100 × stake`, an overturned verdict `+250`, a closed case `+150`, a called can't-tell `+200`, a cleared docket `+500`; points floor at zero and a settled case never pays twice | `tests/test_game.py` |

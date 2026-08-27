@@ -101,25 +101,42 @@ def render_case_card(case: Case, index: int) -> bool:
     unverified = (
         '<span class="pi-case-new">found in your data · unchecked</span>' if not case.probed else ""
     )
+    # A physical folder, the way the design draws it: a tab, a sheet inside carrying the
+    # claim, and a flap over the front carrying the case number and the trick. Reaching for
+    # it lifts the flap and slides the sheet up, so the claim is what opening it reveals.
+    #
+    # The sheet is behind the flap, never hidden. `display:none` would take the claim out of
+    # the accessibility tree, and the claim is the case — a screen reader must reach it
+    # without a hover it cannot perform.
+    #
+    # The tilt class carries the folder's angle in the drawer. It was `:nth-of-type` on the
+    # column until a browser measurement showed Streamlit renders each docket row as its own
+    # columns container, which resets the count: all five folders drew at one of two angles
+    # and three of the design's five never appeared. A cycle of five is intended rather than
+    # a cap — discovery can push the docket to fifteen, and folders sharing an angle three
+    # rows apart still read as a drawer.
     st.markdown(
-        # The folder's angle in the drawer, carried on the card so the CSS can find it.
-        # It was `:nth-of-type` on the column until a browser measurement showed Streamlit
-        # renders each docket row as its own columns container, which resets the count: all
-        # five folders were drawing at one of two angles, and three of the design's five
-        # never appeared. Keyed off the case index instead, so the angle belongs to the
-        # case rather than to where it happens to sit in a row.
-        #
-        # A cycle of five, not five unique angles: discovery can push the docket to fifteen
-        # cases, and the sixth folder repeats the first's tilt. That is the intended
-        # behaviour rather than a cap — folders sharing an angle three rows apart read as a
-        # drawer, and inventing ten more angles would only make the tilt look arbitrary.
-        f'<div class="pi-case-trick pi-tilt-{index % 5}">'
-        f"{html.escape(case.evidence)}{unverified}</div>"
-        f'<div class="pi-case-claim">&ldquo;{html.escape(case.claim)}&rdquo;</div>'
-        f'<div class="pi-case-source">{"Real data" if case.real_data else "Synthetic data"}'
-        f" · {html.escape(case.source)}</div>",
+        f'<div class="pi-folder pi-tilt-{index % 5}">'
+        f'<span class="pi-folder-tab" aria-hidden="true"></span>'
+        f'<div class="pi-folder-sheet">'
+        f'<p class="pi-folder-claim">&ldquo;{html.escape(case.claim)}&rdquo;</p>'
+        f'<p class="pi-folder-source">'
+        f"{'Real data' if case.real_data else 'Synthetic data'}"
+        f" &middot; {html.escape(case.source)}</p>"
+        f"</div>"
+        f'<div class="pi-folder-flap">'
+        f'<span class="pi-folder-no">Case file N&ordm; {index + 1:02d}</span>'
+        f'<span class="pi-folder-title">{html.escape(case.title)}</span>'
+        f'<span class="pi-folder-shape">{html.escape(case.evidence)}{unverified}</span>'
+        f'<span class="pi-folder-stud" aria-hidden="true"></span>'
+        f"</div>"
+        f"</div>",
         unsafe_allow_html=True,
     )
+    # The title stays in the label. Numbering the button instead made all five lips the same
+    # height, and cost every screen-reader user the one place the control says which case it
+    # opens — the folder's own title is a span above it, not part of the button's name. The
+    # lips are levelled in CSS instead, where the problem actually was.
     return st.button(
         f"Open case {index + 1} — {case.title}",
         width="stretch",
@@ -244,17 +261,24 @@ def mapping_panel(settings: Settings, docket: list[Case]) -> None:
         )
 
 
+# How many folders lie across the desk in one row. The design draws four abreast at roughly
+# 240px each; five fits the same span and is what this docket actually holds. Streamlit
+# columns stack rather than shrink below its own breakpoint, so this is a desktop figure and
+# the narrow layout falls out of that stacking rather than out of a second rule here.
+FOLDERS_PER_ROW = 5
+
+
 def beat_claim(settings: Settings) -> None:
-    st.markdown('<div class="pi-eyebrow">The docket</div>', unsafe_allow_html=True)
+    # The design's opening: where you are, what is on the desk, and the one sentence that
+    # says what the app refuses to do. Centred over the lamp rather than ranged left, which
+    # is what makes the docket read as a room you have walked into.
     st.markdown(
-        '<h2 class="pi-bigq">Pick a claim. The app will not tell you whether it is true.</h2>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="pi-lede">Genie writes the query that would test it. You see the query '
-        "and the reasoning — the result stays sealed until you lock your call: does it "
-        "hold up, or is there a trick? How sure you are multiplies what that call is "
-        "worth. Then one follow-up in plain English, and the answer often changes."
+        '<div class="pi-hero">'
+        '<p class="pi-hero-where">City archive &middot; after hours</p>'
+        '<h2 class="pi-hero-line">Rumours on the desk.</h2>'
+        '<p class="pi-hero-sub">The archive will not tell you which are true.</p>'
+        '<p class="pi-hero-rule">Genie writes the query &middot; the result stays sealed '
+        "until you stake a prediction</p>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -262,14 +286,17 @@ def beat_claim(settings: Settings) -> None:
     claim = ""
     chosen: Case | None = None
 
-    # A fresh pair of columns per row, rather than two tall columns filled alternately.
-    # Streamlit stacks columns in DOM order when they collapse, so two tall columns read
+    # A fresh row of columns per group, rather than tall columns filled alternately.
+    # Streamlit stacks columns in DOM order when they collapse, so tall columns read
     # "case 1, case 3, case 2, case 4" on a phone — visibly wrong, because the numbers are
     # in the button labels. Row-wise, the same grid stacks 1, 2, 3, 4.
     docket = session_docket(settings)
-    for start in range(0, len(docket), 2):
-        row = st.columns(2, gap="large")
-        for offset, case in enumerate(docket[start : start + 2]):
+    for start in range(0, len(docket), FOLDERS_PER_ROW):
+        group = docket[start : start + FOLDERS_PER_ROW]
+        # Padded to a full row so a trailing group of two does not stretch its folders to
+        # half the desk each. The spare columns render nothing.
+        row = st.columns(FOLDERS_PER_ROW, gap="small")
+        for offset, case in enumerate(group):
             with row[offset]:
                 if render_case_card(case, start + offset):
                     chosen = case
@@ -295,6 +322,17 @@ def beat_claim(settings: Settings) -> None:
             "Most typed claims end in “can't tell” — the data has no column for them. "
             "That is a win, not a failure."
         )
+
+    # The two standing facts, along the bottom of the archive. Both are checkable rather than
+    # advertised: the first is what `tests/test_no_sql_in_app_code.py` enforces on every
+    # build, and the second is what having no account store and no cookie actually means.
+    st.markdown(
+        '<div class="pi-standing">'
+        "<span>Every query is written by Genie &mdash; this app ships zero SQL</span>"
+        "<span>No accounts &middot; the session dies with the tab</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if chosen is None and not claim:
         return
@@ -326,7 +364,13 @@ def beat_instrument(inv: Investigation) -> None:
     turn = inv.first
     assert turn is not None
 
-    st.markdown(f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>', unsafe_allow_html=True)
+    st.markdown(
+        # The marker that turns this screen into the board. Emitted with the claim because
+        # every screen that shows a claim is a case being worked, and none of the others is.
+        f'<span class="pi-board"></span>'
+        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
+        unsafe_allow_html=True,
+    )
     st.markdown(
         step_rail(2, "Genie wrote a query to test it"),
         unsafe_allow_html=True,
@@ -489,7 +533,13 @@ def beat_reveal(inv: Investigation) -> None:
     analysis = inv.first_analysis
     assert analysis is not None
 
-    st.markdown(f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>', unsafe_allow_html=True)
+    st.markdown(
+        # The marker that turns this screen into the board. Emitted with the claim because
+        # every screen that shows a claim is a case being worked, and none of the others is.
+        f'<span class="pi-board"></span>'
+        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
+        unsafe_allow_html=True,
+    )
     st.markdown(step_rail(4, "The result"), unsafe_allow_html=True)
 
     # The call, standing. At this beat a "trick" call looks lost and a "holds up" call
@@ -574,7 +624,13 @@ def beat_repaired(inv: Investigation) -> None:
     first, second = inv.first_analysis, inv.second_analysis
     assert first is not None and second is not None
 
-    st.markdown(f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>', unsafe_allow_html=True)
+    st.markdown(
+        # The marker that turns this screen into the board. Emitted with the claim because
+        # every screen that shows a claim is a case being worked, and none of the others is.
+        f'<span class="pi-board"></span>'
+        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
+        unsafe_allow_html=True,
+    )
     st.markdown(
         step_rail(4, "The same claim, a fairer query"),
         unsafe_allow_html=True,
@@ -852,6 +908,7 @@ def beat_receipt(inv: Investigation) -> None:
 
     body = "".join(f'<div class="pi-rrow"><span>{k}</span><span>{v}</span></div>' for k, v in rows)
     st.markdown(
+        f'<span class="pi-board"></span>'
         f'<div class="pi-receipt">{verdict_chip(final.verdict)}'
         f'<h2 class="pi-claim" style="margin:10px 0">“{html.escape(inv.claim)}”</h2>'
         f"{body}</div>",
@@ -949,11 +1006,15 @@ def main() -> None:
         # The app's name is the page's one first-level heading. Before this the document
         # had no h1 at all, so a screen-reader user pressing "1" to jump to the top of the
         # content landed nowhere, and the heading outline started at level 2.
-        '<h1 class="pi-logo">Prove<span>It</span></h1>'
-        '<span class="pi-plate">THE EVIDENCE ROOM</span>'
-        '<span class="pi-mast-spacer"></span>'
-        f"{hud(run, len(session_docket())) if (inv is not None or run.cases_called) else ''}"
+        '<h1 class="pi-logo">Prove It <span>&middot; The Evidence Room</span></h1>'
+        '<span class="pi-mast-right">'
+        # Always, rather than only once a case has been called. The design shows the score
+        # and the rank from the moment the archive opens, and a player who can see PTS 0 and
+        # RUMOUR HEARER on arrival knows there is something to climb — which is most of why
+        # the ladder is there.
+        f"{hud(run, len(session_docket()))}"
         f"{source_link(settings.source_url)}"
+        "</span>"
         "</div>",
         unsafe_allow_html=True,
     )

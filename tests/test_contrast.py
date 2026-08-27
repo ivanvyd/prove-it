@@ -65,6 +65,39 @@ PAIRS = [
     ("verdict: can't tell", PALETTE["nodata"], PALETTE["nodata-soft"], BODY),
     # Streamlit's info box, repainted. Its stock blue on blue measured 2.05:1.
     ("the repainted info box", PALETTE["ink"], PALETTE["accent-soft"], BODY),
+    # The Evidence Room. The page is a dark room now, so every word that sits on the room
+    # rather than on a document is a pair that did not exist before.
+    ("heading on the room", PALETTE["bone"], PALETTE["room"], LARGE),
+    ("body text on the room", PALETTE["bone"], PALETTE["room"], BODY),
+    ("caption on the room", PALETTE["ash"], PALETTE["room"], BODY),
+    ("gold label on the room", PALETTE["gold"], PALETTE["room"], BODY),
+    ("body text on the room's lift", PALETTE["bone"], PALETTE["room-lift"], BODY),
+    ("caption on the room's lift", PALETTE["ash"], PALETTE["room-lift"], BODY),
+    # The folder flap, both ends of its gradient. The design's own values sat at 4.23:1 and
+    # 3.34:1 here; the flap was lifted 15% rather than the ink darkened, which would have
+    # collapsed the two ink weights onto one value.
+    ("folder label on the flap", PALETTE["folder-ink-soft"], PALETTE["folder"], BODY),
+    (
+        "folder label on the flap's deep end",
+        PALETTE["folder-ink-soft"],
+        PALETTE["folder-deep"],
+        BODY,
+    ),
+    ("folder title on the flap", PALETTE["folder-ink"], PALETTE["folder"], LARGE),
+    ("folder title on the flap's deep end", PALETTE["folder-ink"], PALETTE["folder-deep"], LARGE),
+    ("the open control's label", PALETTE["folder-ink"], PALETTE["folder-deep"], BODY),
+    # The sheet inside the folder, which is what opening it reveals.
+    ("the claim on the folder's sheet", PALETTE["ink"], PALETTE["paper"], BODY),
+    ("the source line on that sheet", PALETTE["folder-sheet-ink"], PALETTE["paper"], BODY),
+    # Scene two, the corkboard. Only ink clears the floor on cork — the room's own gold
+    # measures 1.5:1 and the app's prose colour 2.04:1 — which is why everything that used to
+    # float on the board is either in ink now or pinned to a card.
+    ("the claim on the board", PALETTE["ink"], PALETTE["cork"], LARGE),
+    ("a label on the board", PALETTE["ink"], PALETTE["cork"], BODY),
+    ("the header on the board", PALETTE["ink"], PALETTE["cork"], BODY),
+    ("the board at its darkest end", PALETTE["ink"], PALETTE["cork-deep"], BODY),
+    # And what is pinned to it stays on paper, where it was already measured.
+    ("Genie's reasoning, on its card", PALETTE["ink"], PALETTE["paper"], BODY),
 ]
 
 
