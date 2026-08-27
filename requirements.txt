@@ -8,3 +8,5 @@
 # is built on actually exists.
 streamlit>=1.62
 databricks-sdk>=0.68
+# 2026-08-27: touched to force Streamlit Cloud to rebuild from a fresh clone — the
+# runtime kept serving a cached checkout across two reboots after a source-only push.
