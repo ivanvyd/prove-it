@@ -17,7 +17,7 @@ often flips.
 | What Genie does | Writes every query, explains its reasoning, holds the rows behind a handle, and rewrites the query mid-conversation. [More](#what-genie-does-here) |
 | What you can ask | A docket claim, any rumour you type, and a cross-examination in your own words. [More](#what-you-can-ask-it) |
 | How you can check | The build fails on any SQL literal in app code, and both turns of a case carry the same Genie conversation id. [More](#how-genie-powers-it-and-how-you-can-check) |
-| Reading the query | Every part of Genie's SQL explains itself on hover or focus, and refuses to summarise what it cannot read honestly. [More](#making-the-query-readable-not-merely-visible) |
+| Reading the query | Every part of Genie's SQL explains itself on hover or focus, and refuses to summarise what it cannot read honestly. [More](#making-the-query-readable) |
 | Accessibility | Measured against WCAG 2.2 AA in a browser: contrast, keyboard, screen reader, target size, reduced motion. [More](#built-to-be-used-by-everyone) |
 | Lessons learned | The `thoughts` field beat the answer; making Genie naive was harder than making it correct; verify against what renders. [More](#lessons-learned) |
 
@@ -247,7 +247,7 @@ That chart's axis starts at zero, unlike the headline chart two beats earlier. T
 argues about a trend, and a truncated axis here would be the app playing the trick it had
 just finished teaching.
 
-## Making the query readable, not merely visible
+## Making the query readable
 
 The product asks a child to bet on a query before seeing its answer. That is only fair if
 they can read the query, and printing it is not the same as making it readable. `AVG` is
@@ -427,13 +427,13 @@ Two things, both in plain English, and both reach Genie word for word.
 **A claim.** Each docket case sends its rumour to Genie as a question — *are boys better at
 maths?* — and case Nº 0 takes yours: type any rumour you have heard and the app asks Genie
 whether the four tables can test it. Most typed claims end in "can't tell from this data",
-scored as a win, with Genie naming the column it would have needed.
+which the app scores as a win, with Genie naming the column it would have needed.
 
 **The cross-examination.** After the reveal, the follow-up box comes pre-filled with the
 wording that lands the trick — *break that down by department*, *show the spread too, and
 how many are in each group* — and it is editable. Your words go into the same Genie
 conversation, and Genie rewrites its own query from them. The app turns neither ask into
-SQL: the question is yours, the query is Genie's.
+SQL at any point; Genie writes every query from your words.
 
 ## What Genie does here
 
