@@ -523,7 +523,7 @@ Three of four cases were wrong that way and every test passed, because nothing a
 the query on screen was about the question asked. It does now.
 
 **The sharpest version of that lesson was a colour.** Every visual in this app is mounted
-with `components.html`, which renders it into a sandboxed iframe. An iframe is a separate
+with `st.iframe`, which renders it into a sandboxed iframe. An iframe is a separate
 document, so it cannot read the host page's CSS custom properties: inside one,
 `var(--rule, #E3E4DE)` resolves to the fallback every time. Each component therefore carried
 its own copy of the colours, code that looked palette-aware and was not. When I repainted

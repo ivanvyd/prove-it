@@ -15,11 +15,13 @@ showErrorDetails = "none"
 headless = true
 
 [theme]
-# The app is a case-file drawer: manila folders and cream paper on a dark desk (see
-# ui/style.py, ported from the Claude Design file "Case Files Rework"). The page itself is
-# a cream sheet, so the base theme is light — that keeps Streamlit's own widgets on the
-# same ground instead of rendering dark chrome on a cream page for viewers whose system
-# theme is dark. The CSS restyles the controls; the base only sets the ground.
+# The app is a case file in a dark room: manila folders and cream paper under a lamp (see
+# ui/style.py, ported from the Claude Design file "Evidence Room"). The room is dark and
+# every word in it sits on light paper, so the base theme is light — that keeps Streamlit's
+# own widgets on the same ground as the documents rather than on the room behind them, and
+# it is why the dark repaint did not disturb the measured contrast pairs. It also stops
+# Streamlit rendering dark chrome on a cream page for viewers whose system theme is dark.
+# The CSS restyles the controls; the base only sets the ground.
 base = "light"
 
 # The case-file red, so Streamlit's own primary matches the CSS tokens in ui/style.py.

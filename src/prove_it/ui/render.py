@@ -267,6 +267,55 @@ def hud(run: Run, total_cases: int) -> str:
     )
 
 
+def source_link(url: str) -> str:
+    """The masthead's link to the source, or nothing when no source is configured.
+
+    The app's central claim — that it never writes a line of SQL — is only checkable by
+    reading the code, so this link is part of the argument rather than a courtesy. It opens
+    in a new tab because losing an in-progress case to a navigation would cost the player
+    their stake, and `rel` is set because `target="_blank"` otherwise hands the opened page
+    a handle back to this one.
+    """
+    # Escaping the value is not the same as trusting the scheme. `html.escape` stops a URL
+    # breaking out of the attribute and does nothing about `javascript:`, which renders as a
+    # live control on every screen of the app — so the scheme is checked here rather than
+    # left to the escaping to imply. Anything that is not plain http(s) is treated exactly
+    # like an empty setting: no link, rather than a link nobody vetted. A URL with no scheme
+    # is refused too, because it would resolve against the app's own origin rather than
+    # reaching a repository.
+    #
+    # Split by hand rather than with the standard library's URL parser, whose module name
+    # `tests/test_product_rules.py` rejects anywhere in the app. That guard is deliberately
+    # blunt and worth more kept that way than the two lines it costs here: it is what checks
+    # this app never fetches anything, which is most of what makes its claims verifiable.
+    scheme, _, _ = url.strip().partition(":")
+    if scheme.lower() not in {"http", "https"}:
+        return ""
+    return (
+        f'<a class="pi-mast-src" href="{html.escape(url, quote=True)}" target="_blank" '
+        # Named on the anchor rather than by its text, because the narrow-viewport rule
+        # hides that text — and `display:none` takes it out of the accessibility tree as
+        # well as off the screen, which would leave the link announced as just its URL.
+        f'rel="noopener noreferrer" aria-label="Read the source on GitHub">'
+        # Drawn inline rather than fetched: the product makes no external requests, and an
+        # icon font or a remote mark would be one on every render.
+        #
+        # A source-code mark rather than the GitHub octocat. The octocat is a single 700-
+        # character bezier path, which is not something to reproduce from memory — the first
+        # attempt rendered a crescent — and it is a trademark besides. Three straight strokes
+        # say "the code" just as plainly and can be read for correctness straight off the
+        # page: two chevrons and the slash between them.
+        f'<svg viewBox="0 0 20 16" width="16" height="14" aria-hidden="true" focusable="false" '
+        f'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+        f'stroke-linejoin="round">'
+        f'<polyline points="6,4 2,8 6,12"/>'
+        f'<polyline points="14,4 18,8 14,12"/>'
+        f'<line x1="11.5" y1="2.5" x2="8.5" y2="13.5"/>'
+        f"</svg>"
+        f"<span>SOURCE</span></a>"
+    )
+
+
 def provenance_panel(inv: Investigation) -> str:
     """Judge-facing chrome: the full identifiers, and what they do and do not prove.
 

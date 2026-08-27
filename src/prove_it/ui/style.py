@@ -61,7 +61,17 @@ FONTS = {
 # page around it was manila and serif. Declared once here and interpolated into all three,
 # so the next repaint cannot leave a frame behind.
 PALETTE = {
-    "desk": "#23262B",
+    # The room the desk stands in. Everything above the desk is dark and everything on it
+    # is paper: that inversion is what makes a folder read as an object under a lamp rather
+    # than as a card on a web page. It also keeps the accessibility work intact — the text a
+    # child actually reads still sits on manila and cream, which is where the contrast pairs
+    # were measured.
+    "room": "#0B0E12",
+    "room-lift": "#12161C",
+    "wood": "#503823",
+    "wood-mid": "#3D2A1A",
+    "wood-deep": "#2A1D10",
+    "cork-frame": "#5E4128",
     "chrome": "#1B2027",
     "chrome-line": "#4A5058",
     "manila": "#EFE4C4",
@@ -179,8 +189,49 @@ def script_json(payload: object) -> str:
 _CSS = """
 <style>
 /*PALETTE*/
-/* The desk the folders lie on. */
-.stApp { background:var(--desk); }
+/* The room the desk stands in: a dark interior, one hanging lamp above the case file, and a
+   vignette pulling the corners down. Painted with gradients on the app shell rather than as
+   a fixed overlay, so it scrolls with the page and costs no extra element.
+
+   The lamp is deliberately anchored to the top centre in `vw`/`vh` rather than to the sheet:
+   a light source that tracks the document reads as a glow effect, and one that stays put
+   reads as a lamp. */
+.stApp {
+  background:
+    radial-gradient(ellipse 46% 30% at 50% -4%, rgba(255,222,150,.16), transparent 68%),
+    radial-gradient(ellipse 120% 80% at 50% 42%, var(--room-lift), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 120%, rgba(80,56,35,.5), transparent 72%),
+    var(--room);
+  background-attachment:fixed; }
+
+/* The cone the lamp throws, and the vignette pulling the corners of the room down. Both
+   hang off the app shell rather than off an injected element: a div emitted into the page
+   is a child of the *sheet*, so its vignette painted over the case file and greyed every
+   word on it. On `.stApp` they sit in the shell's own stacking context, underneath the
+   `z-index` the rule below gives the document.
+
+   Decoration with nothing to say, and `pointer-events:none` so neither can intercept a
+   click meant for a folder. */
+.stApp::before {
+  content:""; position:fixed; left:50%; top:-14vh; width:min(920px, 92vw); height:62vh;
+  transform:translateX(-50%); pointer-events:none; z-index:0;
+  background:linear-gradient(180deg, rgba(255,226,160,.14),
+    rgba(255,214,130,.05) 46%, transparent 78%);
+  clip-path:polygon(41% 0, 59% 0, 96% 100%, 4% 100%);
+  filter:blur(14px); animation:pi-lamp 7s ease-in-out infinite; }
+.stApp::after {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(ellipse 78% 62% at 50% 44%, transparent 44%, rgba(0,0,0,.66) 100%); }
+/* A lamp that never settles is movement in the corner of the eye for as long as the page is
+   open. The glow stays; the flicker goes. */
+@keyframes pi-lamp { 0%,100% { opacity:1; } 43% { opacity:.86; } 71% { opacity:.95; } }
+@media (prefers-reduced-motion: reduce) {
+  .stApp::before { animation:none; }
+  /* The source link's hover fade, on the same terms as the copy button's in query_panel.py. */
+  .pi-mast-src { transition:none; }
+}
+/* The document sits above the light, not under it. */
+.stApp > * { position:relative; z-index:1; }
 
 /* Streamlit's own header — a 60px bar carrying a "Deploy" button and a hamburger — sits
    over the top of the page. Measured, not assumed: it is there at every viewport. On a
@@ -194,6 +245,17 @@ header[data-testid="stHeader"] { display:none; }
    16x16 it was the smallest tap target on the page. */
 [data-testid="stHeaderActionElements"] { display:none; }
 
+/* Streamlit's own help bubble — the "?" beside the stake question — draws at 16x16 with no
+   larger clickable wrapper, which is under the 24px floor WCAG 2.5.8 asks of a pointer
+   target. Measured on the case screen at 768px, where a child is using a finger rather than
+   a mouse. The hit area is grown with an overlay rather than by padding the control, so the
+   icon stays the size the rest of the line is set for — the same trick the copy button on
+   the query panel uses. */
+[data-testid="stTooltipHoverTarget"] { position:relative; }
+[data-testid="stTooltipHoverTarget"]::after {
+  content:""; position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+  width:24px; height:24px; }
+
 /* The default 96px of padding existed to clear that header. With it gone the space is
    just a gap, and 52px of it is worth more given to the claim above the fold. */
 .stMainBlockContainer, .block-container { padding-top:44px; }
@@ -205,10 +267,22 @@ header[data-testid="stHeader"] { display:none; }
 /* The whole page is one case sheet laid on the desk: cream, squared off, with a shadow
    that lifts it. The dark ground shows only at the edges, which is what makes the sheet
    read as an object rather than as the window's background. */
+/* The board itself: the case file, in a wooden frame, standing in the dark room above. The
+   frame is a border rather than a wrapper element because Streamlit owns this node and any
+   wrapper would have to be injected around it — the border draws the same object for one
+   declaration and cannot come adrift from the content. */
 .stMainBlockContainer, .block-container {
-  max-width:1240px; margin:0 auto; background:var(--sheet); color:var(--ink);
+  /* Narrowed from a flat 1240px so the room is always visible around the case file. At
+     1280 the sheet was 1240 of it and the dark ground survived as a two-pixel line, which
+     reads as a rendering artefact rather than as a room. The `min()` keeps the margin
+     proportional instead of collapsing on the first viewport narrower than the cap. */
+  max-width:min(1200px, calc(100vw - 104px)); margin:26px auto 44px;
+  background:var(--sheet); color:var(--ink);
   padding:0 56px 72px !important; border-radius:3px;
-  box-shadow:0 10px 40px rgba(0,0,0,.45);
+  border:9px solid var(--cork-frame);
+  border-image:linear-gradient(150deg, var(--wood), var(--wood-deep) 38%,
+    var(--cork-frame) 62%, var(--wood-mid)) 1;
+  box-shadow:0 28px 70px rgba(0,0,0,.66), 0 2px 0 rgba(255,226,160,.16) inset;
   /* The masthead bleeds to the sheet's edges with a negative margin; without this the
      bleed pushes a horizontal scrollbar onto the page. */
   overflow-x:hidden; }
@@ -229,7 +303,22 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
   margin:0; line-height:1.2; display:inline-block; }
 .pi-logo span { color:var(--gold); }
 .pi-plate { font-family:var(--f-mono); font-size:10px; letter-spacing:.22em;
-  border:1px solid var(--chrome-line); border-radius:2px; padding:3px 8px; color:var(--gold); }
+  border:1px solid var(--chrome-line); border-radius:2px; padding:3px 8px; color:var(--gold);
+  white-space:nowrap; }
+/* The source link. Sized to the 24px floor WCAG 2.5.8 asks of a pointer target rather than
+   to the 15px icon inside it, and it keeps a visible focus ring because it is the one
+   control on the masthead a keyboard reaches. */
+.pi-mast-src { display:inline-flex; align-items:center; gap:7px; flex:0 0 auto;
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em; text-decoration:none;
+  color:var(--gold); border:1px solid var(--chrome-line); border-radius:2px;
+  padding:5px 9px; min-height:24px; transition:color .15s ease, border-color .15s ease; }
+.pi-mast-src:hover { color:var(--bone); border-color:var(--gold); }
+.pi-mast-src:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+/* Below the tablet breakpoint the masthead has to give something up before it wraps. The
+   word goes and the icon stays: it is still a 24px target and still reachable, and the
+   anchor's own `aria-label` keeps it named for anyone who cannot see the mark — which is
+   why the name lives there rather than on the text this rule hides. */
+@media (max-width: 720px) { .pi-mast-src span { display:none; } }
 .pi-mast-spacer { flex:1; }
 .pi-eyebrow { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.18em;
   text-transform:uppercase; color:var(--red); font-weight:600; }
@@ -369,20 +458,69 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
   width:100%; margin:0; border-radius:0 0 4px 4px; border-color:var(--manila-line);
   border-top:1px dashed var(--manila-line); background:var(--manila);
   box-shadow:0 2px 10px rgba(27,32,39,.08); }
-/* Hovering anywhere on a folder opens it. The folder is three Streamlit elements — tab,
-   cover and source line in one markdown block, the Open button in the next — so the hover
-   target is the column they share: the cover tilts up from its bottom edge, the shadow
-   deepens, and the clasp darkens. The clasp rule carries the same specificity as the
-   resting rule above it on purpose: a plainer selector lost to it, and on hover the button
-   kept its manila while the text went bone — white on a pale folder, unreadable. */
-[data-testid="stColumn"]:has(.pi-case-claim) { perspective:1400px; }
-.stElementContainer:has(.pi-case-claim) { transform-origin:50% 100%;
-  transition:transform .3s cubic-bezier(.2,.8,.2,1); }
-.pi-case-claim { transition:box-shadow .3s ease; }
-[data-testid="stColumn"]:has(.pi-case-claim):hover .stElementContainer:has(.pi-case-claim) {
-  transform:rotateX(-8deg) translateY(-4px); }
-[data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim {
-  box-shadow:0 18px 34px rgba(27,32,39,.22); }
+/* Folders do not lie square on a desk. Each column is rotated by a different amount, the
+   way the design draws the drawer, so the docket reads as five physical objects someone
+   put down rather than as a grid of cards. The angles are the design's own. */
+/* The angle and the lift are separate custom properties composed into one transform, rather
+   than two rules overwriting each other's `transform`. That is what lets the reduced-motion
+   block below cancel the lift while leaving the angle alone: an earlier version set
+   `transform:none` on hover, which also stripped the resting rotation, so a reader who had
+   asked for less motion got the folder snapping from 2.6deg to square the instant a pointer
+   touched it — a jump, introduced by the rule meant to prevent jumps. */
+[data-testid="stColumn"]:has(.pi-case-claim) {
+  --tilt:0deg; --lift:0px; --scale:1;
+  transform:rotate(var(--tilt)) translateY(var(--lift)) scale(var(--scale));
+  transform-origin:50% 90%; transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+/* Matched on a class the case card carries rather than on the column's position. Streamlit
+   renders each docket row as its own columns container, so `:nth-of-type` counts within the
+   row and resets: measured in a browser, all five folders drew at one of two angles and
+   three of these five never appeared at all. */
+[data-testid="stColumn"]:has(.pi-tilt-0) { --tilt:-2.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-1) { --tilt:-.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-2) { --tilt:1.4deg; }
+[data-testid="stColumn"]:has(.pi-tilt-3) { --tilt:2.6deg; }
+[data-testid="stColumn"]:has(.pi-tilt-4) { --tilt:3.8deg; }
+/* Hovering anywhere on a folder lifts it out of the drawer and the sheet inside slides up
+   far enough to be seen. The hover target is the column, because a folder is three
+   Streamlit elements — tab, cover and source line in one markdown block, then the Open
+   button — and lifting only one of them tears the object in half. The angle is deliberately
+   left alone: the design lifts and scales on hover and never squares the folder up. */
+[data-testid="stColumn"]:has(.pi-case-claim):hover,
+[data-testid="stColumn"]:has(.pi-case-claim):focus-within {
+  --lift:-14px; --scale:1.03; z-index:3; }
+/* The shadow deepens on hover but is deliberately NOT transitioned. `box-shadow` is not a
+   compositor property, so interpolating it repaints the folder on every frame for the whole
+   300ms. Traced on the docket: sweeping a pointer across the five folders cost ~200 extra
+   paints and ~320ms of raster over moving the pointer across plain text, and setting
+   reduced-motion barely dented it because the repaint is the shadow, not the movement. The
+   transform beside it stays animated — that one is compositor-only and measured free. */
+.pi-case-claim { position:relative; }
+/* The sheet inside the folder, peeking over its top edge. Behind the cover's background at
+   rest, so only the millimetre above the fold shows. */
+.pi-case-claim::before {
+  content:""; position:absolute; left:14%; right:9%; top:-4px; height:38px; z-index:-1;
+  background:var(--paper); border:1px solid var(--manila-line); border-radius:3px 3px 0 0;
+  box-shadow:0 -3px 8px rgba(27,32,39,.14);
+  transform:translateY(16px); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+[data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim::before,
+[data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim::before {
+  transform:translateY(-15px); }
+[data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim,
+[data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim {
+  box-shadow:0 22px 42px rgba(0,0,0,.42); }
+/* A drawer of folders that jump when a pointer crosses them is exactly the motion a
+   vestibular disorder reacts to. The angle stays — it is identity, not animation — and
+   every movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  [data-testid="stColumn"]:has(.pi-case-claim),
+  .pi-case-claim::before { transition:none; }
+  [data-testid="stColumn"]:has(.pi-case-claim):hover,
+  [data-testid="stColumn"]:has(.pi-case-claim):focus-within { --lift:0px; --scale:1; }
+  /* The peek stays tucked away rather than sliding, so nothing moves under the pointer. */
+  [data-testid="stColumn"]:has(.pi-case-claim):hover .pi-case-claim::before,
+  [data-testid="stColumn"]:has(.pi-case-claim):focus-within .pi-case-claim::before {
+    transform:translateY(16px); }
+}
 [data-testid="stColumn"]:has(.pi-case-claim):hover .stElementContainer .stButton > button,
 .stElementContainer:has(.pi-case-source) + .stElementContainer .stButton > button:hover,
 [class*="st-key-case-"] .stButton > button:hover {
@@ -460,9 +598,6 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
   .pi-exhibit, .pi-stamp { animation:none; opacity:1; transform:rotate(-7deg); }
   .pi-seal--open .blocks, .pi-verdict--arrive { animation:none; opacity:1; transform:none; }
   .pi-exhibit { transform:none; }
-  .stElementContainer:has(.pi-case-claim), .pi-case-claim { transition:none; }
-  [data-testid="stColumn"]:has(.pi-case-claim):hover .stElementContainer:has(.pi-case-claim) {
-    transform:none; }
 }
 .pi-said { font-family:var(--f-mono); font-size:12.5px; background:var(--paper);
   color:var(--slate); border:1px solid var(--rule); border-left:3px solid var(--red);
@@ -491,16 +626,36 @@ h1,h2,h3 { font-family:var(--f-display) !important; letter-spacing:-.015em; colo
   /* The sheet's 56px margins are a desk-sized luxury; on a phone they cost a third of the
      line. The masthead's negative margin has to shrink with them or it stops bleeding to
      the edges and leaves a cream gutter beside the navy bar. */
+  /* The room gives up its margin before the text does. A 104px gutter is a desk on a
+     monitor and a third of the line on a phone, so below this width the case file runs
+     nearly edge to edge and the frame thins to match. */
   .stMainBlockContainer, .block-container { padding-left:18px !important;
-    padding-right:18px !important; }
+    padding-right:18px !important;
+    max-width:calc(100vw - 16px); margin:8px auto 20px; border-width:5px; }
   .pi-mast { margin-left:-18px; margin-right:-18px; gap:10px; padding:0 14px; }
   .pi-hud { gap:12px; font-size:10.5px; }
-  .pi-hud-docket { display:none; }
   .pi-plate { display:none; }
 }
+/* The docket counter sheds earlier than the rest, because between 721px and 849px the bar
+   has its full chrome — plate, counter, score, streak, rank, source — and not the width for
+   it. Measured at 768px, an iPad in portrait and one of this app's four target widths: the
+   row overflowed by 17px and `overflow:hidden` took the RANK PLATE off the right edge with
+   no cue, which is the same silent clip this bar was fixed for once before. The counter is
+   the right thing to drop: the step rail on every case screen already says where the player
+   is, so it is the one readout here that is duplicated elsewhere. */
+@media (max-width: 860px) { .pi-hud-docket { display:none; } }
 @media (max-width: 520px) {
   .pi-hud-streak { display:none; }
   .pi-logo { font-size:16px; }
+}
+/* Below the smallest width in the device matrix there is still a real phone — a 320px
+   handset — and on it the longest rank title, FIELD INVESTIGATOR at 155px, was pushing the
+   plate off the right edge by 26px. The plate is tightened rather than dropped: rank is the
+   readout the whole score exists to move, and a player who has earned one should be able to
+   see it on whatever they are holding. */
+@media (max-width: 374px) {
+  .pi-hud-rank { font-size:9px; letter-spacing:.06em; padding:3px 6px; }
+  .pi-hud { gap:9px; }
 }
 .pi-stakeline { font-family:var(--f-mono); font-size:11px; letter-spacing:.14em;
   text-transform:uppercase; color:var(--red); font-weight:600; margin:-4px 0 10px; }

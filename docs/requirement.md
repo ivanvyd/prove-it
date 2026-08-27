@@ -122,7 +122,7 @@ lesson works. Anyone who wants it has the contract above.
 | R16 | A run of the docket is scored: a call pays `100 × stake`, an overturned verdict `+250`, a closed case `+150`, a called can't-tell `+200`, a cleared docket `+500`; points floor at zero and a settled case never pays twice | `tests/test_game.py` |
 | R17 | The score reads as progress, not a tally: a rank ladder (Rumour Hearer 0 / Evidence Clerk 500 / Field Investigator 1200 / Chief Examiner 2500), a streak, and per-stake calibration on the receipt | `tests/test_game.py`; `tests/test_app_flow.py` |
 | R18 | A wrong call is never punitive and never gates content: nothing is locked, and a verdict the data cannot reach scores nothing rather than costing the player | `tests/test_game.py` (VOID keeps the streak) |
-| R19 | Every inline visual paints in the page's own palette and type stacks, across the iframe boundary `components.html` puts it behind | `tests/test_frame_palette.py` |
+| R19 | Every inline visual paints in the page's own palette and type stacks, across the iframe boundary `st.iframe` puts it behind | `tests/test_frame_palette.py` |
 | R20 | On a case whose trick is a distance, the player may place an estimate of that distance before any row is fetched, and is shown their mark against the real value at the reveal | `tests/test_estimate.py`; `tests/test_app_flow.py` |
 | R21 | The estimate can only earn: a wide mark scores zero, never negative, and prints no line on the payout | `test_a_wild_guess_pays_nothing_and_costs_nothing` |
 | R22 | The estimate is locked by the same commit as the call — there is no path that records one after the rows are on screen | `test_the_estimate_is_locked_by_the_same_commit_as_the_call` |
@@ -176,7 +176,7 @@ in application code that targets the demo tables fails the build.
 - Responsive down to 375px. The score and the rank are the last things to be shed: the HUD
   drops the docket counter, then the streak, and keeps points and rank at every width.
 - The app must degrade to CANT_TELL rather than raising, for any Genie response shape.
-- Every visual mounted with `components.html` renders inside an iframe, which is a separate
+- Every visual mounted with `st.iframe` renders inside an iframe, which is a separate
   document that cannot read the page's CSS custom properties. Colours and type stacks cross
   that boundary by import from `ui/style.py` — never by a `var(--x, fallback)`, which
   inside a frame silently means "the fallback, always".

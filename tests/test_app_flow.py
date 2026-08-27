@@ -347,6 +347,25 @@ def test_a_wide_estimate_costs_nothing_and_prints_no_line_on_the_chit() -> None:
     assert payout and "Wide of it" not in payout[0], "no nil line belongs on the chit"
 
 
+def test_every_folder_in_the_drawer_sits_at_its_own_angle() -> None:
+    """Five folders, five different tilts — the thing that makes the docket read as objects.
+
+    The angle used to come from `:nth-of-type` on the Streamlit column. A browser
+    measurement showed why that was wrong: each docket row is its own columns container, so
+    the count restarts at every row and all five folders drew at one of two angles. The
+    class is emitted per case now, and this asserts the five are distinct rather than merely
+    present — a regression that gave every card the same tilt would otherwise pass.
+
+    Matched on the class PAIR as the card emits it. Searching for `pi-tilt-N` alone found
+    all five in every case, because `all_text` also returns the injected stylesheet and the
+    stylesheet names all five selectors. The first version of this test passed against code
+    that hardcoded a single tilt.
+    """
+    text = all_text(launch())
+    tilts = {n for n in range(5) if f"pi-case-trick pi-tilt-{n}" in text}
+    assert len(tilts) == min(5, len(DOCKET)), f"expected a distinct tilt per case, got {tilts}"
+
+
 def test_a_case_that_asks_for_no_estimate_still_plays() -> None:
     """The window's trick is a chosen span of years, not a distance between two numbers,
     so it asks for no mark at all — and must be unaffected."""

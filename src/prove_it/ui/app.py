@@ -70,6 +70,7 @@ from prove_it.ui.render import (
     render_table,
     render_thoughts,
     seal_panel,
+    source_link,
     step_rail,
     verdict_chip,
 )
@@ -101,7 +102,19 @@ def render_case_card(case: Case, index: int) -> bool:
         '<span class="pi-case-new">found in your data · unchecked</span>' if not case.probed else ""
     )
     st.markdown(
-        f'<div class="pi-case-trick">{html.escape(case.evidence)}{unverified}</div>'
+        # The folder's angle in the drawer, carried on the card so the CSS can find it.
+        # It was `:nth-of-type` on the column until a browser measurement showed Streamlit
+        # renders each docket row as its own columns container, which resets the count: all
+        # five folders were drawing at one of two angles, and three of the design's five
+        # never appeared. Keyed off the case index instead, so the angle belongs to the
+        # case rather than to where it happens to sit in a row.
+        #
+        # A cycle of five, not five unique angles: discovery can push the docket to fifteen
+        # cases, and the sixth folder repeats the first's tilt. That is the intended
+        # behaviour rather than a cap — folders sharing an angle three rows apart read as a
+        # drawer, and inventing ten more angles would only make the tilt look arbitrary.
+        f'<div class="pi-case-trick pi-tilt-{index % 5}">'
+        f"{html.escape(case.evidence)}{unverified}</div>"
         f'<div class="pi-case-claim">&ldquo;{html.escape(case.claim)}&rdquo;</div>'
         f'<div class="pi-case-source">{"Real data" if case.real_data else "Synthetic data"}'
         f" · {html.escape(case.source)}</div>",
@@ -937,9 +950,10 @@ def main() -> None:
         # had no h1 at all, so a screen-reader user pressing "1" to jump to the top of the
         # content landed nowhere, and the heading outline started at level 2.
         '<h1 class="pi-logo">Prove<span>It</span></h1>'
-        '<span class="pi-plate">CASE FILES</span>'
+        '<span class="pi-plate">THE EVIDENCE ROOM</span>'
         '<span class="pi-mast-spacer"></span>'
         f"{hud(run, len(session_docket())) if (inv is not None or run.cases_called) else ''}"
+        f"{source_link(settings.source_url)}"
         "</div>",
         unsafe_allow_html=True,
     )

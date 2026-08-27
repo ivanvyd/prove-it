@@ -39,7 +39,13 @@ from prove_it.ui.style import (
 
 # Room for the query, the strip, and the header. The frame measures itself and corrects
 # this, but a floor that is close keeps the first paint from jumping.
-BASE_HEIGHT = 132
+# A floor for the first paint, not a budget: `fit()` measures the rendered panel and
+# corrects the frame, so this only has to be no smaller than the real thing. Raised from 132
+# when the warrant heading gained 4px of padding above the label and a 1px heavier rule
+# beneath it. The perforation strip costs nothing here despite being the visible part of
+# that change — it is absolutely positioned, so it adds no height and sits inside the
+# padding that was already there.
+BASE_HEIGHT = 138
 PER_LINE = 26
 CHARS_PER_LINE = 62
 
@@ -105,12 +111,20 @@ def render_query_panel(sql: str | None, *, label: str = "The query Genie wrote")
 
 <style>
   html, body {{ margin:0; padding:0; background:transparent; }}
+  /* The warrant the design draws: a torn-off sheet whose heading is ruled heavily away
+     from the query beneath. The tear is a perforation line rather than a real serrated
+     edge — notching the border would need a mask on `.qp`, and a mask clips the shadow
+     that lifts the sheet off the page. */
   .qp {{ font-family:{SERIF}; color:{INK}; background:{PAPER};
-    border:1px solid {RULE}; border-radius:2px; box-shadow:0 2px 12px {rgba("ink", 0.07)}; }}
+    border:1px solid {RULE}; border-radius:2px; box-shadow:0 2px 12px {rgba("ink", 0.07)};
+    position:relative; }}
+  .qp::before {{ content:""; position:absolute; left:10px; right:10px; top:4px; height:2px;
+    background:repeating-linear-gradient(90deg,
+      {rgba("ink", 0.22)} 0 3px, transparent 3px 8px); }}
   .qp-head {{ display:flex; align-items:center; justify-content:space-between; gap:12px;
-    padding:10px 14px 8px 16px; border-bottom:1px solid {RULE}; }}
-  .qp-label {{ font-family:{MONO}; font-size:10.5px; letter-spacing:.18em;
-    text-transform:uppercase; color:{PENCIL}; font-weight:600; }}
+    padding:14px 14px 8px 16px; border-bottom:2px solid {INK}; margin:0 14px; }}
+  .qp-label {{ font-family:{MONO}; font-size:11px; letter-spacing:.2em;
+    text-transform:uppercase; color:{INK}; font-weight:700; }}
 
   /* 44x44 of hit area for the copy control, per the target-size guidance, without the
      button drawing at that size. */

@@ -73,8 +73,9 @@ Cut hard to the docket.
 
 ## 0:10–0:24 — The docket
 
-**On screen:** five manila case folders on a dark desk. Navy masthead across the top with
-the **CASE FILES** plate.
+**On screen:** five manila case folders, each lying at its own angle, on a lit desk in a
+dark room. Navy masthead across the top with the **THE EVIDENCE ROOM** plate and a link to
+the source.
 
 > "Five things people actually say. Every one of them is sourced, published and checkable.
 > This app will not tell you whether any of them is true."

@@ -53,6 +53,12 @@ class Settings:
     # the alternative — five cases naming five tables a given workspace may not have — is
     # what made this app unusable outside the workspace it was written in.
     discover: bool = True
+    # Where the masthead's source link points. The whole product's claim is that the app
+    # never writes SQL, and the only way a judge can check that is to read the code — so the
+    # link is chrome that carries an argument, not a courtesy. Configurable because a fork
+    # pointing visitors at this repo would be claiming someone else's provenance for its own
+    # docket; set it to empty and the link is not rendered at all.
+    source_url: str = "https://github.com/ivanvyd/prove-it"
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -69,6 +75,7 @@ class Settings:
             catalog=os.environ.get("PROVE_IT_CATALOG", "workspace"),
             schema=os.environ.get("PROVE_IT_SCHEMA", "prove_it"),
             discover=_flag("PROVE_IT_DISCOVER", default=True),
+            source_url=os.environ.get("PROVE_IT_SOURCE_URL", cls.source_url),
         )
 
     def readable_tables(self) -> list[DiscoveredTable]:

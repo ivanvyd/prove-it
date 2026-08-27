@@ -273,7 +273,12 @@ out of whatever it finds there:
 PROVE_IT_CATALOG=my_catalog     # default: workspace
 PROVE_IT_SCHEMA=my_schema       # default: prove_it
 PROVE_IT_DISCOVER=1             # default; 0 plays only the five checked cases
+PROVE_IT_SOURCE_URL=https://github.com/you/your-fork   # masthead source link; empty hides it
 ```
+
+Set `PROVE_IT_SOURCE_URL` when you fork. The masthead link is how anyone checks the claim
+that the app never writes SQL, so a fork that leaves it pointing here is offering this
+repository as evidence for its own docket.
 
 `domain/discovery.py` matches each table against the four tricks by column *role* — a
 measure, a label, a year, a tried/succeeded pair, a per-unit column — reading only the names,
@@ -398,7 +403,7 @@ reward was simply off-screen — which is why the HUD now sheds the docket count
 streak, and keeps points and rank at every width.
 
 What the sweep could *not* see is worth recording next to it. Every visual is mounted with
-`components.html`, which renders it into a sandboxed iframe — a separate document that
+`st.iframe`, which renders it into a sandboxed iframe — a separate document that
 cannot read the page's CSS variables. Six of them therefore kept their own copy of the
 colours and stayed on the pre-rework palette while the page around them was repainted: the
 flip beat, the Berkeley reversal, the window chart, the evidence room, the headline chart
