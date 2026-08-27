@@ -26,15 +26,16 @@ import re
 import pytest
 
 from prove_it.domain.distribution import GroupShape
-from prove_it.domain.game import Call, Stake, settle
-from prove_it.domain.verdict import Subgroup, Verdict
+from prove_it.domain.game import Call, Stake
+from prove_it.domain.verdict import Subgroup
+from prove_it.ui.board import render_board
 from prove_it.ui.headline_chart import render_headline_chart
 from prove_it.ui.interrogation import render_room
+from prove_it.ui.kit import copy_frame
 from prove_it.ui.pupil_cloud import render_cloud
 from prove_it.ui.query_panel import render_query_panel
 from prove_it.ui.reversal_chart import render_reversal
 from prove_it.ui.style import FONTS, PALETTE
-from prove_it.ui.verdict_slam import render_slam
 from prove_it.ui.window_chart import render_window
 
 HEX = re.compile(r"#[0-9A-Fa-f]{6}\b")
@@ -62,26 +63,33 @@ SUBGROUPS = [
 ]
 
 
-def _slam() -> str:
-    settlement = settle(Call.TRICK, Stake.HUNCH, Verdict.HOLDS, Verdict.BUSTED, 0)
-    return render_slam(
-        first=Verdict.HOLDS,
-        second=Verdict.BUSTED,
-        trick="Simpson's paradox",
-        follow_up="break it down by department",
-        added=["STDDEV", "department"],
-        settlement=settlement,
-        stake_label="Hunch",
-        points_before=0,
-        points_after=settlement.points,
-    )
+def _board() -> str:
+    """The board at the retrial, which is the phase that draws every item it has: both
+    warrants, the emptied bag, the strip, the stamps and the tag."""
+    import os
+
+    os.environ["PROVE_IT_OFFLINE"] = "1"
+    from prove_it.config import Settings
+    from prove_it.domain.cases import case_for
+    from prove_it.domain.exhibits import exhibits_for
+    from prove_it.session import Investigation
+
+    case = case_for("paradox")
+    assert case is not None
+    inv = Investigation.open_case(case, Settings.from_env().build_client(case.key))
+    inv.ask_genie()
+    inv.commit_call(Call.TRICK, Stake.HUNCH, None)
+    inv.repair(None, asked=case.follow_up)
+    exhibits = exhibits_for(inv.first.sql, inv.second.sql, inv.second_result, inv.second_analysis)
+    return render_board(inv, number=3, phase="retrial", exhibits=exhibits)
 
 
 # The root element of each frame, and the selector its stylesheet declares it under. The
 # root is what the rest of the component inherits from, so it is the one rule that must set
 # a font — see the test below.
 ROOTS = {
-    "verdict_slam": ".vs",
+    "board": "body",
+    "copy_frame": "button",
     "interrogation": ".ir",
     "reversal_chart": ".rv",
     "window_chart": ".wc",
@@ -91,7 +99,8 @@ ROOTS = {
 }
 
 FRAMES = {
-    "verdict_slam": _slam,
+    "board": _board,
+    "copy_frame": lambda: copy_frame("I checked a rumour against real data."),
     "interrogation": lambda: render_room(phase="THINKING", started_at_ms=1000.0, done=False),
     "reversal_chart": lambda: render_reversal(SUBGROUPS, (44.5, 30.4)),
     "window_chart": lambda: render_window(

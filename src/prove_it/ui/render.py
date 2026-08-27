@@ -1,13 +1,12 @@
 """Small renderers: markup fragments and single Streamlit elements.
 
-Split from `app.py` at the same time as the stylesheet, and along the same seam the file
-already had. These turn one value into one piece of page — a chip, a panel, a table — and
-none of them decides anything. Everything that decides lives in `domain/` where a test can
-reach it without a browser.
+These turn one value into one piece of page — a chip, a ledger, a table — and none of
+them decides anything. Everything that decides lives in `domain/` where a test can reach
+it without a browser.
 
-The three that carry real risk are here together on purpose: `seal_panel`, `custody_line`
-and `provenance_panel` all render Genie-supplied strings into markdown with HTML enabled,
-so every value they interpolate is escaped.
+The two that carry real risk are here together on purpose: `provenance_panel` and
+`source_link` render strings the app does not control into markdown with HTML enabled, so
+every value they interpolate is escaped.
 """
 
 from __future__ import annotations
@@ -21,176 +20,42 @@ import streamlit as st
 from prove_it.domain.custody import custody_of, same_conversation
 from prove_it.domain.estimate import score_estimate, verdict_gap
 from prove_it.domain.exhibits import Exhibit
-from prove_it.domain.game import Outcome, Run, Settlement, rank_for
-from prove_it.domain.sqldiff import Change, diff_tokens
 from prove_it.domain.verdict import ResultTable, Verdict, is_rate_column
-from prove_it.genie.models import Turn
 from prove_it.session import Investigation
 from prove_it.ui.style import VERDICT_TEXT
 
-# -- small renderers ----------------------------------------------------------------
-
 
 def verdict_chip(verdict: Verdict, *, arrive: bool = False) -> str:
-    """`arrive` plays the chip in with the stamp's overshoot — used once, at the reveal,
-    where the verdict is the thing that has just been unsealed."""
+    """`arrive` plays the chip in with the stamp's overshoot — used where the verdict is
+    the thing that has just been unsealed."""
     label, css = VERDICT_TEXT[verdict]
     extra = " pi-verdict--arrive" if arrive else ""
     return f'<span class="pi-verdict {css}{extra}">{label}</span>'
 
 
-def bring_into_view(marker: str | None = None) -> None:
-    """Scroll the page to the top, or to the first inline frame whose markup contains
-    `marker`, after a change of screen.
+def bring_into_view() -> None:
+    """Scroll the page to the top after a change of scene.
 
     Streamlit keeps the scroll position across a rerun, which is right for a widget change
-    and wrong for a navigation. A player who clicked a folder halfway down the docket landed
-    halfway down the case screen; one who locked a call landed below the seal breaking; and
-    one who cross-examined landed a screen *past* the verdict slam, which then played to
-    nobody. The scroll container is Streamlit's block container, not the document, so this
-    is a zero-height frame reaching up into the parent to move it. The marker search retries
-    briefly because the frame it looks for may still be mounting.
+    and wrong for a navigation: a player who clicked a folder halfway down the archive
+    landed halfway down the board. The scroll container is Streamlit's block container, not
+    the document, so this is a one-pixel frame reaching up into the parent to move it.
     """
-    target = json.dumps(marker)
     st.iframe(
-        "<script>"
-        "(function () {"
-        "  var marker = " + target + ";"
+        "<script>(function () {"
         "  var d = window.parent.document;"
-        "  var scrollers = ['[data-testid=\"stMainBlockContainer\"]', 'section.stMain']"
-        "    .map(function (s) { return d.querySelector(s); }).filter(Boolean);"
-        "  if (!marker) {"
-        "    scrollers.forEach(function (s) { s.scrollTop = 0; });"
-        "    window.parent.scrollTo(0, 0);"
-        "    return;"
-        "  }"
-        "  var tries = 0;"
-        "  (function go() {"
-        "    var frames = Array.prototype.slice.call(d.querySelectorAll('iframe'));"
-        "    var f = frames.filter(function (x) {"
-        "      return (x.getAttribute('srcdoc') || '').indexOf(marker) !== -1; })[0];"
-        "    if (!f) { if (tries++ < 60) setTimeout(go, 50); return; }"
-        "    var s = scrollers.filter(function (x) { return x.scrollHeight > x.clientHeight; })[0];"
-        "    if (!s) { f.scrollIntoView({ block: 'start' }); return; }"
-        "    var y = f.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop;"
-        "    s.scrollTo({ top: Math.max(0, y - 24), behavior: 'smooth' });"
-        "  })();"
-        "})();"
-        "</script>",
+        "  ['[data-testid=\"stMainBlockContainer\"]', 'section.stMain']"
+        "    .map(function (s) { return d.querySelector(s); })"
+        "    .filter(Boolean).forEach(function (s) { s.scrollTop = 0; });"
+        "  window.parent.scrollTo(0, 0);"
+        # The archive's leaving-animation classes. Streamlit keeps the container node
+        # across reruns, so what a click added is still there when the next scene lands.
+        "  d.querySelectorAll('.is-leaving, .is-opening').forEach(function (e) {"
+        "    e.classList.remove('is-leaving', 'is-opening'); });"
+        "})();</script>",
         # One pixel, not none: `st.iframe` rejects a height of zero. The container is
         # hidden in CSS, so the pixel never reaches the page.
         height=1,
-    )
-
-
-CASE_STEPS = 5
-
-
-def step_rail(current: int, label: str) -> str:
-    """Where you are in the case, drawn rather than only named.
-
-    "Step 2 of 5" was 10.5px uppercase mono — the smallest text on the screen. In a game
-    the progress signal should be among the largest, and for the age this is built for it
-    is most of what keeps a player going: a five-segment rail fills as the case proceeds,
-    so the end is visible from the start and each beat is a segment earned.
-
-    The count is announced once, for a screen reader, and the segments themselves are
-    decoration — repeating "step, step, step" would be noise.
-    """
-    segments = "".join(
-        f'<span class="pi-rail-seg{" is-done" if n < current else ""}'
-        f'{" is-now" if n == current else ""}"></span>'
-        for n in range(1, CASE_STEPS + 1)
-    )
-    announced = f"Step {current} of {CASE_STEPS}: {html.escape(label)}"
-    return (
-        f'<div class="pi-rail" role="group" aria-label="{announced}">'
-        f'<span class="pi-rail-track" aria-hidden="true">{segments}</span>'
-        f'<span class="pi-rail-label">{html.escape(label)}</span>'
-        f"</div>"
-    )
-
-
-def render_sql(sql: str | None) -> str:
-    return f'<div class="pi-sql">{html.escape(sql or "")}</div>'
-
-
-def seal_panel(
-    *, opened: bool, tag: str | None, question: str | None = None, wager: str | None = None
-) -> str:
-    """The sealed result, as an object rather than an absence.
-
-    Both states render from here so the locked and open poses line up exactly — the demo
-    cuts between them, and a cut only reads as an unlock when nothing but the lock moves.
-
-    `tag` is Genie's real attachment id, which is precisely the handle the app is holding
-    and refusing to spend until the child has committed. Printing it makes the seal a
-    picture of a fact instead of a decorative padlock.
-    """
-    lock = "🔓" if opened else "🔒"
-    label = "Seal broken" if opened else "Result sealed"
-    tag_line = (
-        f'<div class="pi-tag">Evidence tag&nbsp; <b>{html.escape(tag)}</b></div>' if tag else ""
-    )
-    # The same blocked-out digits in both states, struck through once the seal is open.
-    # Keeping the element identical is what lets the demo cut between the two stills; the
-    # strike is what stops an opened seal reading as though it were still hiding the
-    # number that is now sitting directly beneath it.
-    # Decoration, and hidden from assistive technology on purpose: a screen reader reading
-    # "black-square black-square" tells a listener nothing, and the label beside it already
-    # says the result is sealed.
-    blocks = '<div class="blocks" aria-hidden="true">▚▚▚.▚</div>'
-    prompt = (
-        f'<div class="q">{question}</div>'
-        if question
-        else ('<div class="q">The result is below.</div>' if opened else "")
-    )
-    # The wager, printed on the seal once it is open: the same object the player was
-    # staring at, now carrying what they put on it. It is what makes the reveal read as
-    # a bet being settled rather than a number arriving.
-    wager_line = f'<div class="wager">{html.escape(wager)}</div>' if wager else ""
-    return (
-        f'<div class="pi-seal{" pi-seal--open" if opened else ""}">'
-        f'<div class="k">{lock} {label}</div>'
-        f"{blocks}{prompt}{wager_line}{tag_line}</div>"
-    )
-
-
-def custody_line(turn: Turn | None, *, continues: bool = False) -> str:
-    """One query's provenance, in Genie's own identifiers.
-
-    `continues` marks the follow-up as having stayed inside the first query's
-    conversation. That is the multi-turn claim made checkable: it is the difference
-    between Genie remembering what was asked and a template being run twice.
-
-    Renders nothing when Genie wrote no query. This line attributes *a query*, and a
-    refused follow-up has none — it reached Stage.REPAIRED with `has_query` false, and
-    stamping "written by Genie" under it would put a false provenance claim on screen.
-    A wrong authorship statement is worse here than an absent one, because the whole
-    point of the line is that it can be checked.
-    """
-    record = custody_of(turn)
-    if record is None or turn is None or not turn.has_query:
-        return ""
-    conversation = html.escape(record.short_conversation)
-    message = html.escape(record.short_message)
-    marker = '<span class="same">same conversation as query v1</span><br>' if continues else ""
-    return (
-        f'<div class="pi-custody">{marker}'
-        f"written by Genie · conversation {conversation}… · message {message}…</div>"
-    )
-
-
-def call_line(inv: Investigation) -> str:
-    """The player's call, standing. Shown at the naive reveal, where a "trick" call looks
-    lost and a "holds up" call looks won — and neither is settled yet."""
-    call, stake = inv.call, inv.stake
-    if call is None or stake is None:
-        return ""
-    standing = " The cross-examination decides." if inv.can_repair else ""
-    return (
-        f'<div class="pi-call">Your call: <b>{html.escape(call.value)}</b> · '
-        f"staked {html.escape(stake.label.lower())} (×{stake.multiplier}).{standing}</div>"
     )
 
 
@@ -216,59 +81,23 @@ def estimate_line(inv: Investigation) -> str:
     spec = inv.case.estimate
     result = score_estimate(inv.guess, actual, spec)
     you, truth = spec.fraction_of(inv.guess) * 100, spec.fraction_of(actual) * 100
-    tone = "hit" if result.landed else "miss"
     unit = html.escape(spec.unit)
     verdict_word = html.escape(result.label)
     reward = f" <b>+{result.points}</b>" if result.points else ""
     return (
-        f'<div class="pi-est pi-est--{tone}">'
-        f'<div class="pi-est-rule">'
+        '<div class="pi-est">'
+        '<div class="pi-est-rule">'
         f'<span class="pi-est-truth" style="left:{truth:.2f}%"></span>'
         f'<span class="pi-est-you" style="left:{you:.2f}%"></span>'
-        f"</div>"
+        "</div>"
         f'<div class="pi-est-read">You said <b>{inv.guess:.1f}{unit}</b> · '
         f"it is <b>{actual:.1f}{unit}</b> — {verdict_word}{reward}</div>"
-        f"</div>"
-    )
-
-
-def payout_line(inv: Investigation, settlement: Settlement) -> str:
-    """The payout chit: every award named and totalled, the way the design's torn slip
-    shows its working rather than handing over one opaque number."""
-    if inv.stake is None:
-        return ""
-    if settlement.outcome is Outcome.VOID:
-        return (
-            '<div class="pi-payout pi-payout--void">'
-            "The data could not rule on that — nothing scored, nothing lost.</div>"
-        )
-    tone = "win" if settlement.outcome is Outcome.RIGHT else "loss"
-    lines = " · ".join(f"{html.escape(a.label)} {a.points:+d}" for a in settlement.awards)
-    return f'<div class="pi-payout pi-payout--{tone}">{lines} <b>= {settlement.points:+d}</b></div>'
-
-
-def hud(run: Run, total_cases: int) -> str:
-    """The run, read off the masthead: docket progress, chips, streak, and the rank plate.
-
-    Ordered the way the design's chrome bar reads it — progress first, then the score, then
-    the title you currently hold.
-    """
-    streak = (
-        f'<span class="pi-hud-streak is-on">STREAK {run.streak}</span>' if run.streak >= 3 else ""
-    )
-    rank = rank_for(run.points)
-    return (
-        f'<span class="pi-hud">'
-        f'<span class="pi-hud-docket">DOCKET <b>{run.cases_called}/{total_cases}</b></span>'
-        f'<span>PTS <span class="pi-hud-chips">{run.points}</span></span>'
-        f"{streak}"
-        f'<span class="pi-hud-rank">{html.escape(rank.title.upper())}</span>'
-        f"</span>"
+        "</div>"
     )
 
 
 def source_link(url: str) -> str:
-    """The masthead's link to the source, or nothing when no source is configured.
+    """The link to the source, or nothing when no source is configured.
 
     The app's central claim — that it never writes a line of SQL — is only checkable by
     reading the code, so this link is part of the argument rather than a courtesy. It opens
@@ -286,34 +115,30 @@ def source_link(url: str) -> str:
     #
     # Split by hand rather than with the standard library's URL parser, whose module name
     # `tests/test_product_rules.py` rejects anywhere in the app. That guard is deliberately
-    # blunt and worth more kept that way than the two lines it costs here: it is what checks
-    # this app never fetches anything, which is most of what makes its claims verifiable.
+    # blunt and worth more kept that way than the two lines it costs here.
     scheme, _, _ = url.strip().partition(":")
     if scheme.lower() not in {"http", "https"}:
         return ""
     return (
         f'<a class="pi-mast-src" href="{html.escape(url, quote=True)}" target="_blank" '
-        # Named on the anchor rather than by its text, because the narrow-viewport rule
-        # hides that text — and `display:none` takes it out of the accessibility tree as
-        # well as off the screen, which would leave the link announced as just its URL.
         f'rel="noopener noreferrer" aria-label="Read the source on GitHub">'
-        # Drawn inline rather than fetched: the product makes no external requests, and an
-        # icon font or a remote mark would be one on every render.
-        #
-        # A source-code mark rather than the GitHub octocat. The octocat is a single 700-
-        # character bezier path, which is not something to reproduce from memory — the first
-        # attempt rendered a crescent — and it is a trademark besides. Three straight strokes
-        # say "the code" just as plainly and can be read for correctness straight off the
-        # page: two chevrons and the slash between them.
-        f'<svg viewBox="0 0 20 16" width="16" height="14" aria-hidden="true" focusable="false" '
-        f'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
-        f'stroke-linejoin="round">'
-        f'<polyline points="6,4 2,8 6,12"/>'
-        f'<polyline points="14,4 18,8 14,12"/>'
-        f'<line x1="11.5" y1="2.5" x2="8.5" y2="13.5"/>'
-        f"</svg>"
-        f"<span>SOURCE</span></a>"
+        # The GitHub mark, inline rather than fetched. The path is the design file's own,
+        # copied rather than retyped: an earlier attempt to reproduce it from memory
+        # rendered a crescent, which is what a 700-character bezier does to a guess.
+        f'<svg width="19" height="19" viewBox="0 0 16 16" fill="currentColor" '
+        f'aria-hidden="true" focusable="false"><path d="{OCTOCAT}"/></svg></a>'
     )
+
+
+OCTOCAT = (
+    "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-"
+    "1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 "
+    "1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 "
+    "0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36"
+    ".09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-"
+    "1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 "
+    "0 0 0 16 8c0-4.42-3.58-8-8-8z"
+)
 
 
 def provenance_panel(inv: Investigation) -> str:
@@ -324,8 +149,8 @@ def provenance_panel(inv: Investigation) -> str:
     """
     rows = []
     for label, turn in (("v1", inv.first), ("v2", inv.second)):
-        # Same rule as `custody_line`: the table's first column is "Query", so a turn that
-        # produced none does not get a row claiming otherwise.
+        # The table's first column is "Query", so a turn that produced none does not get
+        # a row claiming otherwise.
         if turn is None or not turn.has_query:
             continue
         record = custody_of(turn)
@@ -358,38 +183,6 @@ def provenance_panel(inv: Investigation) -> str:
     )
 
 
-def render_diff(
-    before: str | None, after: str | None, exhibits: list[Exhibit] | None = None
-) -> str:
-    """Render the two queries as one diff.
-
-    Highlights inline at token level rather than by line. Real Genie emits a query as one
-    long line, so a line-based diff marked the whole statement as replaced and the two new
-    columns — the entire point of this screen — never showed up as additions.
-    """
-    labels = {e.fragment: e.label for e in (exhibits or []) if e.fragment}
-    rows = []
-    for segment in diff_tokens(before, after):
-        text = html.escape(segment.text)
-        if segment.change is Change.ADDED:
-            # Carry the exhibit letter into the highlight so the badge in the SQL, the
-            # badge in the narration below and the column in the table are visibly the
-            # same thing rather than three separate claims.
-            label = next((v for k, v in labels.items() if k and k in segment.text), None)
-            # Escaped for consistency with `render_exhibits` below, which escapes the same
-            # field. `Exhibit.label` is currently always one letter from a fixed alphabet,
-            # so nothing is reachable today — but this file's own docstring promises every
-            # interpolated value is escaped, and an unescaped one makes that a lie the next
-            # reader has to re-derive.
-            badge = f'<b class="pi-ex">{html.escape(label)}</b>' if label else ""
-            rows.append(f'<mark class="add">{badge}{text}</mark>')
-        elif segment.change is Change.REMOVED:
-            rows.append(f'<span class="del">{text}</span>')
-        else:
-            rows.append(f"<span>{text}</span>")
-    return f'<div class="pi-sql">{"".join(rows)}</div>'
-
-
 def render_exhibits(exhibits: list[Exhibit]) -> str:
     """The added columns, named, with what each one revealed.
 
@@ -406,28 +199,6 @@ def render_exhibits(exhibits: list[Exhibit]) -> str:
             f"{html.escape(exhibit.narration)}</div></div>"
         )
     return f'<div class="pi-exhibits">{"".join(rows)}</div>'
-
-
-def render_thoughts(turn: Turn) -> None:
-    steps = turn.ordered_thoughts
-    if not steps:
-        # The probe may show `thoughts` is empty on Free Edition. Falling back to the
-        # one-line description keeps the panel honest instead of empty.
-        if turn.description:
-            st.markdown(
-                f'<div class="pi-step"><div class="t">What it understood</div>'
-                f'<div class="b">{html.escape(turn.description)}</div></div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.caption("Genie did not explain its working for this one.")
-        return
-    for step in steps:
-        st.markdown(
-            f'<div class="pi-step"><div class="t">{html.escape(step.label)}</div>'
-            f'<div class="b">{html.escape(step.content)}</div></div>',
-            unsafe_allow_html=True,
-        )
 
 
 def for_display(cell: object, column: str = "") -> object:
@@ -474,3 +245,17 @@ def render_table(table: ResultTable | None) -> None:
         hide_index=True,
         width="stretch",
     )
+
+
+__all__ = [
+    "bring_into_view",
+    "estimate_line",
+    "for_display",
+    "provenance_panel",
+    "render_exhibits",
+    "render_table",
+    "source_link",
+    "verdict_chip",
+]
+
+_ = json  # `json` stays imported for `script_json` callers that used to live here.

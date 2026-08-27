@@ -102,9 +102,9 @@ FROM workspace.prove_it.berkeley_admissions
 GROUP BY gender
 ```
 
-![The sealed screen: Genie's query on a ruled sheet with its reasoning beside it, and the
-result held in a kraft evidence bag banded SEALED, DO NOT OPEN UNTIL A CALL IS IN, carrying
-Genie's real attachment handle as an evidence tag.](screenshots/01-sealed.png)
+![The archive after hours: a dark room with a hanging lamp over a wooden desk, and the five
+case files lying on it as manila folders, each with its number, its trick and its trap
+rating.](screenshots/01-the-archive.png)
 
 Men 44.5%, women 30.4%. Verdict: **looks true**, by a wide margin. Fourteen points is no
 rounding error, and this is the table that gets printed.
@@ -123,9 +123,10 @@ FROM workspace.prove_it.berkeley_admissions
 GROUP BY department, gender
 ```
 
-![The flip: LOOKS TRUE stamped in green with OVERTURNED struck across it in red at an angle,
-BUSTED beside it, and both queries side by side with the added department column
-highlighted.](screenshots/02-the-flip.png)
+![The sealed board: the case pinned to a corkboard — the claim clipping, Genie's reasoning
+on index cards, the SEARCH WARRANT carrying its query, and the result held in a kraft
+evidence bag banded SEALED, DO NOT OPEN, carrying Genie's real attachment
+handle.](screenshots/02-sealed.png)
 
 Twelve rows instead of two. **Four of the six departments admitted women at a higher rate
 than men**: A, B, D and F. Verdict: **busted**.
@@ -227,9 +228,9 @@ headline would print, with the axis starting just under the lower value so a sma
 becomes a landslide. Its own label reads `axis starts at 487, not 0`. The trick is performed
 in the open, with the caption admitting to it.
 
-![The Berkeley slopegraph: six departments as paired dots, men in navy and women in ochre,
-four of the six sloping the way the pooled total says they should not, with the pooled ALL
-row underneath sloping the other way.](screenshots/03-slopegraph.png)
+![The flip: OVERTURNED struck across the first warrant in red, WARRANT Nº 2 marked BUSTED
+beside it with the added department column highlighted, red strings connecting the pinned
+exhibits, and the desk below counting up the payout.](screenshots/03-the-flip.png)
 
 After the retrial, the Berkeley case draws a **slopegraph**: six departments, two points
 each, men's rate to women's rate. Four of the six lines slope the way the pooled total says
@@ -309,9 +310,9 @@ rather than to whoever wrote the caption. The technique needs one thing most pro
 offer, and this one already had it: a moment where the query is on screen and the answer is
 not.
 
-![The estimate ruler at the reveal: a red mark labelled "the data" near the left, the
-player's ring far to the right of it, and the line "You said 18.0 points, it is 4.5 points.
-Wide of it".](screenshots/04-explaining-the-gap.png)
+![The antibody card, minted when the case closes: ANTIBODY Nº 03, Simpson's paradox, with
+the trick, what it does and where it turns up next — the one thing that leaves the room,
+over the board it was won on.](screenshots/04-the-antibody.png)
 
 It lands the lesson before anyone argues for it. Someone who believes *boys are better at
 maths* puts the gap around 18 points and reads back: **you said 18.0 points, it is 4.5.**

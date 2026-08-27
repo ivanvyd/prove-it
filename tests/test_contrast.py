@@ -1,13 +1,15 @@
-"""Every colour pair the app paints text in, against the WCAG 2.2 AA floor.
+"""Every colour pair the Evidence Room paints text in, against the WCAG 2.2 AA floor.
 
-Eight of these were below the floor when this suite was written, and every one was found by
-measuring a running browser rather than by looking: the "offline demo" caption at 2.97:1,
-the sealed bag's own labels at 3.32:1, Streamlit's stock info box at 2.05:1 — that last one
-on the single sentence the whole product exists to deliver.
+The design file is reproduced surface for surface — every flap, sheet, bag and slate is
+the colour it was drawn in. Where the design's own INK on those surfaces fell short of
+4.5:1, the ink was darkened by the smallest step that clears the floor and the surface was
+left alone; each such case is named below with the number it measured. This app is read
+by ten-year-olds on classroom projectors, and a label they cannot resolve is not a label.
 
 Checked here as arithmetic over the palette rather than in a browser, so it runs in the
-normal suite and fails the build when someone lightens a token. The browser sweep is what
-found the pairs; this is what keeps them.
+normal suite and fails the build when someone lightens a token. The gradients are checked
+at the point where the text actually sits, because a flap that starts at 4.9:1 and ends at
+3.8:1 puts its TRAP line on the wrong end.
 """
 
 from __future__ import annotations
@@ -37,67 +39,100 @@ def contrast(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-# (what it is, foreground, background, floor). Foregrounds written as literals where the
-# rule uses a literal, so this fails if either the rule or the palette drifts.
+def mix(start: str, end: str, at: float) -> str:
+    """The colour a two-stop gradient reaches at `at` (0..1) — where a label sits."""
+    a, b = start.lstrip("#"), end.lstrip("#")
+    channels = (
+        round(int(a[i : i + 2], 16) * (1 - at) + int(b[i : i + 2], 16) * at) for i in (0, 2, 4)
+    )
+    return "#" + "".join(f"{channel:02X}" for channel in channels)
+
+
+P = PALETTE
+# The wager panel is a 55% wash over the desk.
+PANEL = mix(P["desk-mid"], "#14100A", 0.55)
+
 PAIRS = [
-    ("body text on the sheet", PALETTE["ink"], PALETTE["sheet"], BODY),
-    ("body text on paper", PALETTE["ink"], PALETTE["paper"], BODY),
-    ("body text on manila", PALETTE["ink"], PALETTE["manila"], BODY),
-    ("pencil prose on the sheet", PALETTE["pencil"], PALETTE["sheet"], BODY),
-    ("pencil prose on paper", PALETTE["pencil"], PALETTE["paper"], BODY),
-    # The line telling a visitor the demo is a recording. Was #8A8E80 at 2.97:1.
-    ("the offline caption", PALETTE["faint"], PALETTE["sheet"], BODY),
-    ("case eyebrow on its folder tab", "#6B5D3F", PALETTE["manila-tab"], BODY),
-    ("case source line on manila", "#6E6042", PALETTE["manila"], BODY),
-    ("section label on the sheet", "#64685C", PALETTE["sheet"], BODY),
-    ("section label on manila", "#64685C", PALETTE["manila"], BODY),
-    # The sealed evidence bag. All three were 3.32:1 on kraft.
-    ("the seal's own labels", "#5A4C2E", PALETTE["kraft"], BODY),
-    ("the wager written on the bag", "#5A4C2E", PALETTE["kraft"], BODY),
-    ("the redacted digits", "#7E6430", PALETTE["kraft"], LARGE),
-    # Where a trick shows up in the wild: the sentence a child is meant to leave with.
-    ("the antibody card's wild line", "#845F1E", PALETTE["manila"], BODY),
-    ("the masthead wordmark", PALETTE["bone"], PALETTE["chrome"], BODY),
-    ("the masthead's gold", PALETTE["gold"], PALETTE["chrome"], BODY),
-    ("verdict: looks true", PALETTE["holds"], PALETTE["holds-soft"], BODY),
-    ("verdict: busted", PALETTE["busted"], PALETTE["busted-soft"], BODY),
-    ("verdict: half true", PALETTE["accent"], PALETTE["accent-soft"], BODY),
-    ("verdict: can't tell", PALETTE["nodata"], PALETTE["nodata-soft"], BODY),
-    # Streamlit's info box, repainted. Its stock blue on blue measured 2.05:1.
-    ("the repainted info box", PALETTE["ink"], PALETTE["accent-soft"], BODY),
-    # The Evidence Room. The page is a dark room now, so every word that sits on the room
-    # rather than on a document is a pair that did not exist before.
-    ("heading on the room", PALETTE["bone"], PALETTE["room"], LARGE),
-    ("body text on the room", PALETTE["bone"], PALETTE["room"], BODY),
-    ("caption on the room", PALETTE["ash"], PALETTE["room"], BODY),
-    ("gold label on the room", PALETTE["gold"], PALETTE["room"], BODY),
-    ("body text on the room's lift", PALETTE["bone"], PALETTE["room-lift"], BODY),
-    ("caption on the room's lift", PALETTE["ash"], PALETTE["room-lift"], BODY),
-    # The folder flap, both ends of its gradient. The design's own values sat at 4.23:1 and
-    # 3.34:1 here; the flap was lifted 15% rather than the ink darkened, which would have
-    # collapsed the two ink weights onto one value.
-    ("folder label on the flap", PALETTE["folder-ink-soft"], PALETTE["folder"], BODY),
+    # -- the archive: text on the room -------------------------------------------------
+    ("the hero's rule line on the room", P["ash"], P["room"], BODY),
+    ("the hero's subtitle on the wall", P["mist"], P["wall-mid"], BODY),
+    ("the nameplate's gold on the room", P["gold"], P["room"], BODY),
+    ("the standing facts on the desk", P["ash"], P["desk-deep"], BODY),
+    # -- the folders: the design's flaps, with ink measured where the labels sit -------
+    # The design's #4A3A1E measured 3.79:1 at the TRAP line; the ink is darker here.
+    ("folder label, mid-flap", P["kraft-ink"], mix(P["folder"], P["folder-deep"], 0.45), BODY),
+    ("folder title, mid-flap", P["ink-brown"], mix(P["folder"], P["folder-deep"], 0.45), LARGE),
     (
-        "folder label on the flap's deep end",
-        PALETTE["folder-ink-soft"],
-        PALETTE["folder-deep"],
+        "up-next label, mid-flap",
+        P["kraft-ink"],
+        mix(P["folder-next"], P["folder-next-deep"], 0.45),
         BODY,
     ),
-    ("folder title on the flap", PALETTE["folder-ink"], PALETTE["folder"], LARGE),
-    ("folder title on the flap's deep end", PALETTE["folder-ink"], PALETTE["folder-deep"], LARGE),
-    ("the open control's label", PALETTE["folder-ink"], PALETTE["folder-deep"], BODY),
-    # The sheet inside the folder, which is what opening it reveals.
-    ("the claim on the folder's sheet", PALETTE["ink"], PALETTE["paper"], BODY),
-    ("the source line on that sheet", PALETTE["folder-sheet-ink"], PALETTE["paper"], BODY),
-    # Scene two, the corkboard. Only ink clears the floor on cork — the room's own gold
-    # measures 1.5:1 and the app's prose colour 2.04:1 — which is why everything that used to
-    # float on the board is either in ink now or pinned to a card.
-    ("the claim on the board", PALETTE["ink"], PALETTE["cork"], LARGE),
-    ("a label on the board", PALETTE["ink"], PALETTE["cork"], BODY),
-    ("the header on the board", PALETTE["ink"], PALETTE["cork"], BODY),
-    ("the board at its darkest end", PALETTE["ink"], PALETTE["cork-deep"], BODY),
-    # And what is pinned to it stays on paper, where it was already measured.
-    ("Genie's reasoning, on its card", PALETTE["ink"], PALETTE["paper"], BODY),
+    # The design's #3A3018 measured 3.26:1 on the darker folder; the ink is darker here.
+    (
+        "own-folder label, mid-flap",
+        P["folder-own-label"],
+        mix(P["folder-own"], P["folder-own-deep"], 0.45),
+        BODY,
+    ),
+    (
+        "own-folder title",
+        P["folder-own-ink"],
+        mix(P["folder-own"], P["folder-own-deep"], 0.45),
+        LARGE,
+    ),
+    ("the claim on the sheet inside", P["ink-type"], P["cream"], BODY),
+    ("the source tag on the sheet inside", P["pencil-warm"], P["cream"], BODY),
+    ("the UP NEXT badge", P["bone"], P["red"], BODY),
+    # -- the board: every word is on a document ---------------------------------------
+    ("the clipping's label", P["pencil-warm"], P["clipping"], BODY),
+    ("the claim on the clipping", P["ink-warm"], P["clipping"], BODY),
+    ("the reasoning card's label", P["navy"], P["paper"], BODY),
+    ("the reasoning on its card", P["ink-brown"], P["paper"], BODY),
+    ("the warrant's label", P["pencil-warm"], P["cream"], BODY),
+    ("the query on the warrant", P["ink-warm"], P["cream"], BODY),
+    ("a keyword on the warrant", P["red-sql"], P["cream"], BODY),
+    ("an added column on the second warrant", P["green-deep"], P["green-mark"], BODY),
+    # The design's #4A3A1E measured 4.17:1 on the lower half of the bag.
+    ("the bag's label, lower half", P["kraft-ink"], mix(P["kraft"], P["kraft-mid"], 0.6), BODY),
+    ("the band on the bag", P["wax-ink"], P["red"], BODY),
+    ("the tag card on the bag", P["slate"], P["paper"], BODY),
+    ("the strip's label", P["pencil-strip"], P["paper"], BODY),
+    ("the rows on the strip", P["ink-warm"], P["paper"], BODY),
+    ("the strip's table head", P["pencil-strip"], P["table-head"], BODY),
+    ("the same-conversation tag", P["red"], P["paper"], BODY),
+    ("the custody tag", P["kraft-ink-soft"], P["tag"], BODY),
+    ("a hand-written note on cream", P["red-hand"], P["cream"], BODY),
+    # -- the desk -----------------------------------------------------------------------
+    ("the slate's label", P["kraft-ink-soft"], P["kraft"], BODY),
+    ("the slate's title", P["ink-warm"], P["kraft"], BODY),
+    ("the wager's question on the panel", P["mist"], PANEL, BODY),
+    ("the wager's title on the panel", P["gold-pale"], PANEL, BODY),
+    ("the stake's note on the panel", P["ash"], PANEL, BODY),
+    ("a coin's face", P["gold-pale"], PANEL, BODY),
+    ("the certain coin's face", P["certain-ink"], PANEL, BODY),
+    ("a slip", P["ink-warm"], P["cream"], BODY),
+    ("the seal's text on the wax", P["wax-ink"], P["wax"], BODY),
+    ("the seal's hint", P["mist"], PANEL, BODY),
+    ("a chit", P["chit-ink"], P["chit"], BODY),
+    ("the review's question", P["bone"], PANEL, BODY),
+    ("the review's text", P["mist"], PANEL, BODY),
+    # The button is a red-lit → wax gradient; its label sits across the middle of it.
+    ("the cross-examine button", P["wax-ink"], mix(P["red-lit"], P["wax"], 0.5), BODY),
+    ("the close-the-case button", P["chrome"], P["gold"], BODY),
+    # -- the kit -------------------------------------------------------------------------
+    ("the card's head", P["bone"], P["chrome"], BODY),
+    ("the card's lesson", P["slate"], P["paper"], BODY),
+    ("the card's wild line", P["pencil-strip"], P["paper"], BODY),
+    ("a kit slot", P["ash"], P["room"], BODY),
+    ("the share card's footer", P["kraft-ink"], P["cream"], BODY),
+    # -- the receipt --------------------------------------------------------------------
+    ("the receipt's rows", P["ink-warm"], P["cream"], BODY),
+    ("the receipt's values", P["pencil-warm"], P["cream"], BODY),
+    ("verdict: looks true", P["holds"], P["paper"], BODY),
+    ("verdict: busted", P["busted"], P["paper"], BODY),
+    ("verdict: half true", P["accent"], P["paper"], BODY),
+    ("verdict: can't tell", P["nodata"], P["paper"], BODY),
 ]
 
 
@@ -108,8 +143,8 @@ def test_text_clears_the_wcag_aa_floor(
     ratio = contrast(foreground, background)
     assert ratio >= floor, (
         f"{what}: {foreground} on {background} is {ratio:.2f}:1, below the {floor}:1 floor. "
-        f"This app is read by ten-year-olds on classroom projectors — darken the foreground "
-        f"rather than lowering the bar."
+        f"This app is read by ten-year-olds on classroom projectors — darken the ink "
+        f"rather than lowering the bar, and leave the design's surface alone."
     )
 
 
@@ -118,3 +153,4 @@ def test_the_ratio_maths_is_right() -> None:
     assert contrast("#000000", "#FFFFFF") == pytest.approx(21.0, abs=0.01)
     assert contrast("#FFFFFF", "#FFFFFF") == pytest.approx(1.0, abs=0.01)
     assert contrast("#777777", "#FFFFFF") == pytest.approx(4.48, abs=0.05)
+    assert mix("#000000", "#FFFFFF", 0.5) == "#808080"

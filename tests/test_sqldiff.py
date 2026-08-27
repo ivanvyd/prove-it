@@ -5,20 +5,23 @@ import re
 
 from prove_it.domain.sqldiff import Change, added_count, diff_sql, diff_tokens
 from prove_it.genie.fake import DEMO_FIRST, DEMO_SECOND
-from prove_it.ui.render import render_sql
+from prove_it.ui.board import warrant_diff, warrant_sql
+
+TAGS = re.compile(r"<[^>]+>")
 
 
-def test_rendered_sql_is_byte_identical_to_what_genie_wrote() -> None:
+def test_the_warrant_is_byte_identical_to_what_genie_wrote() -> None:
     """R2. The app displays Genie's query verbatim — no truncation, no reformatting.
 
-    Substring assertions elsewhere would survive a change that silently normalised
-    whitespace or trimmed long queries, which would quietly break the guarantee the whole
-    product rests on.
+    The warrant wraps parts of the query so they can explain themselves and types the
+    keywords in red, and none of that may touch a character: with every tag stripped, what
+    is left is exactly the query. Substring assertions elsewhere would survive a change
+    that silently normalised whitespace or trimmed long queries, which would quietly break
+    the guarantee the whole product rests on.
     """
     for sql in (DEMO_FIRST.sql, DEMO_SECOND.sql):
-        rendered = render_sql(sql)
-        inner = re.sub(r"^<div class=\"pi-sql\">|</div>$", "", rendered)
-        assert html.unescape(inner) == sql
+        rendered = warrant_sql(sql)
+        assert html.unescape(TAGS.sub("", rendered)) == sql
 
 
 REAL_V1 = (
@@ -57,19 +60,20 @@ def test_a_token_diff_reassembles_into_exactly_what_genie_wrote() -> None:
     assert rebuilt == REAL_V2
 
 
-def test_the_rendered_diff_marks_additions_inline() -> None:
-    from prove_it.ui.render import render_diff
-
-    rendered = render_diff(REAL_V1, REAL_V2)
-    assert '<mark class="add">' in rendered
+def test_the_second_warrant_marks_additions_inline() -> None:
+    rendered = warrant_diff(REAL_V1, REAL_V2, [])
+    assert "<mark" in rendered
+    assert "STDDEV" in rendered
     assert "student_scoresGROUP" not in rendered
+    # The second warrant is the new query: what is left after the tags is exactly v2.
+    assert html.unescape(TAGS.sub("", rendered)) == REAL_V2
 
 
 def test_rendering_a_query_with_html_in_it_escapes_rather_than_injects() -> None:
     hostile = "SELECT '<img src=x onerror=alert(1)>' AS x"
-    rendered = render_sql(hostile)
-    assert "<img" not in rendered
-    assert "&lt;img" in rendered
+    for rendered in (warrant_sql(hostile), warrant_diff(None, hostile, [])):
+        assert "<img" not in rendered
+        assert "&lt;img" in rendered
 
 
 def texts(lines, change):

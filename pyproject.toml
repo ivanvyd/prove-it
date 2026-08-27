@@ -60,6 +60,14 @@ select = ["E", "F", "I", "UP", "B", "SIM", "BLE"]
 # must put `src` on sys.path before it can import the package. The imports below that
 # bootstrap are deliberately not at the top of the file.
 "src/prove_it/ui/app.py" = ["E402"]
+# The scenes carry their stylesheets and the board its document as Python strings, and a
+# stylesheet's lines are as long as a rule is. Wrapping a CSS declaration to fit a Python
+# line limit makes the CSS harder to read against the design file it was taken from.
+"src/prove_it/ui/style.py" = ["E501"]
+"src/prove_it/ui/archive.py" = ["E501"]
+"src/prove_it/ui/board.py" = ["E501"]
+"src/prove_it/ui/desk.py" = ["E501"]
+"src/prove_it/ui/kit.py" = ["E501"]
 "scripts/probe.py" = ["E402"]
 "scripts/setup_workspace.py" = ["E402"]
 "tests/test_probe.py" = ["E402"]

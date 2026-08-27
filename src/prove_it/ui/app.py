@@ -1,8 +1,14 @@
-"""Prove It — the five beats, in a Databricks App.
+"""Prove It — the Evidence Room, in a Databricks App.
+
+Two scenes, the way the design file draws them. The archive: a dark room, a desk, and the
+case files lying on it as folders. The board: one case pinned to a corkboard — the claim,
+Genie's reasoning, the search warrant carrying its query, the sealed result — with the desk
+under it holding whichever panel the case has reached: the wager, the review, the retrial,
+the closed case.
 
 The view holds no logic worth testing: it renders what `Investigation` decided. That is
-deliberate, because the interesting rules — when rows may be fetched, what counts as a
-falsifying prediction, how a verdict is reached — belong where a test can reach them.
+deliberate, because the interesting rules — when rows may be fetched, what counts as a call,
+how a verdict is reached — belong where a test can reach them.
 """
 
 from __future__ import annotations
@@ -27,7 +33,7 @@ import streamlit as st  # noqa: E402
 from prove_it.config import Settings  # noqa: E402
 from prove_it.domain.cases import DOCKET, Case
 from prove_it.domain.claim import ClaimError, repair_question
-from prove_it.domain.custody import evidence_tag, same_conversation
+from prove_it.domain.custody import custody_of
 from prove_it.domain.discovery import (
     MAX_DISCOVERED,
     DiscoveredTable,
@@ -39,8 +45,8 @@ from prove_it.domain.distribution import group_means, group_shapes  # noqa: E402
 from prove_it.domain.estimate import EstimateResult, score_estimate, verdict_gap
 from prove_it.domain.exhibits import exhibits_for, weighting_exhibits
 from prove_it.domain.game import (
-    CALL_POINTS,
     Call,
+    Outcome,
     Run,
     Stake,
     calibration,
@@ -48,100 +54,82 @@ from prove_it.domain.game import (
     rank_for,
 )
 from prove_it.domain.record import Record
-from prove_it.domain.sqldiff import Change, diff_tokens
-from prove_it.domain.verdict import series_points, subgroup_rates
+from prove_it.domain.verdict import Verdict, series_points, subgroup_rates
 from prove_it.session import Investigation, Stage
+from prove_it.ui.archive import (
+    ARCHIVE_CSS,
+    archive_script,
+    folder,
+    footer,
+    header_bar,
+    hero,
+    own_folder,
+)
+from prove_it.ui.board import board_height, phase_of, render_board
 from prove_it.ui.components import gap_mark
+from prove_it.ui.desk import (
+    CLOSE_LINE,
+    DESK_CSS,
+    FLIP_LINE,
+    case_bar,
+    props,
+    seal_hint,
+    slate,
+    under,
+    wager_head,
+)
 from prove_it.ui.headline_chart import render_headline_chart
 from prove_it.ui.interrogation import phase_for, render_room, room_height
+from prove_it.ui.kit import (
+    KIT_CSS,
+    antibody_card,
+    copy_frame,
+    share_caption,
+    share_card,
+    share_svg,
+)
 from prove_it.ui.pupil_cloud import cloud_height, render_cloud
 from prove_it.ui.query_panel import panel_height, render_query_panel
 from prove_it.ui.render import (
     bring_into_view,
-    call_line,
-    custody_line,
     estimate_line,
-    hud,
-    payout_line,
     provenance_panel,
-    render_diff,
     render_exhibits,
-    render_sql,
     render_table,
-    render_thoughts,
-    seal_panel,
-    source_link,
-    step_rail,
     verdict_chip,
 )
 from prove_it.ui.reversal_chart import chart_height as reversal_height
 from prove_it.ui.reversal_chart import render_reversal
-from prove_it.ui.style import CSS, DEFAULT_NUDGE, DEFAULT_REPAIR_LABEL, FRAME_THEME
-from prove_it.ui.verdict_slam import SLAM_MARKER, render_slam, slam_height
+from prove_it.ui.style import CSS, DEFAULT_NUDGE, DEFAULT_REPAIR_LABEL, FONT_LINK, FRAME_THEME
 from prove_it.ui.window_chart import chart_height as window_height
 from prove_it.ui.window_chart import render_window
 
-# -- beats --------------------------------------------------------------------------
+OFFLINE_NOTE = "Offline demo — replaying a recorded Genie conversation"
+
+# -- scene one: the archive -----------------------------------------------------------
 
 
-def render_case_card(case: Case, index: int) -> bool:
-    """One case on the docket. Returns True when it is picked.
+def render_folder(case: Case, index: int, *, up_next: bool, closed: Verdict | None) -> bool:
+    """One case on the desk. Returns True when it is picked.
 
-    The trick is named on the card before the case is opened, not withheld as a surprise.
-    Knowing it is "the missing denominator" does not spoil anything — the work is spotting
-    where it applies, and a player who knows what they are looking for engages harder than
-    one being set up.
+    The folder is the click target, as in the design: the real button lies over it,
+    invisible but present, so a screen reader hears "Open case 3 — The paradox" and a
+    keyboard reaches it.
     """
-    # The eyebrow is the SHAPE of the evidence, not the trick. Once a call can be lost, a
-    # card reading "Simpson's paradox" is a bet that cannot lose; the trick is named at
-    # the flip and on the antibody card, where it lands as a reveal.
-    # A discovered case has never been run. Saying so on the card is not a disclaimer, it
-    # is the same honesty the rest of the app runs on: the curated five advertise an arc
-    # because someone measured it three times, and this one cannot make that claim.
-    unverified = (
-        '<span class="pi-case-new">found in your data · unchecked</span>' if not case.probed else ""
-    )
-    # A physical folder, the way the design draws it: a tab, a sheet inside carrying the
-    # claim, and a flap over the front carrying the case number and the trick. Reaching for
-    # it lifts the flap and slides the sheet up, so the claim is what opening it reveals.
-    #
-    # The sheet is behind the flap, never hidden. `display:none` would take the claim out of
-    # the accessibility tree, and the claim is the case — a screen reader must reach it
-    # without a hover it cannot perform.
-    #
-    # The tilt class carries the folder's angle in the drawer. It was `:nth-of-type` on the
-    # column until a browser measurement showed Streamlit renders each docket row as its own
-    # columns container, which resets the count: all five folders drew at one of two angles
-    # and three of the design's five never appeared. A cycle of five is intended rather than
-    # a cap — discovery can push the docket to fifteen, and folders sharing an angle three
-    # rows apart still read as a drawer.
-    st.markdown(
-        f'<div class="pi-folder pi-tilt-{index % 5}">'
-        f'<span class="pi-folder-tab" aria-hidden="true"></span>'
-        f'<div class="pi-folder-sheet">'
-        f'<p class="pi-folder-claim">&ldquo;{html.escape(case.claim)}&rdquo;</p>'
-        f'<p class="pi-folder-source">'
-        f"{'Real data' if case.real_data else 'Synthetic data'}"
-        f" &middot; {html.escape(case.source)}</p>"
-        f"</div>"
-        f'<div class="pi-folder-flap">'
-        f'<span class="pi-folder-no">Case file N&ordm; {index + 1:02d}</span>'
-        f'<span class="pi-folder-title">{html.escape(case.title)}</span>'
-        f'<span class="pi-folder-shape">{html.escape(case.evidence)}{unverified}</span>'
-        f'<span class="pi-folder-stud" aria-hidden="true"></span>'
-        f"</div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-    # The title stays in the label. Numbering the button instead made all five lips the same
-    # height, and cost every screen-reader user the one place the control says which case it
-    # opens — the folder's own title is a span above it, not part of the button's name. The
-    # lips are levelled in CSS instead, where the problem actually was.
+    st.markdown(folder(case, index, up_next=up_next, closed=closed), unsafe_allow_html=True)
     return st.button(
-        f"Open case {index + 1} — {case.title}",
-        width="stretch",
-        key=f"case-{case.key}",
+        f"Open case {index + 1} — {case.title}", key=f"case-{case.key}", width="stretch"
     )
+
+
+def render_own_folder() -> bool:
+    st.markdown(own_folder(), unsafe_allow_html=True)
+    return st.button("Open case 0 — bring your own rumour", key="case-own", width="stretch")
+
+
+def closed_verdicts(run: Run) -> dict[str, Verdict]:
+    """Which cases were called this session, and what each reached — for the stamps."""
+    return {call.key: call.verdict for call in run.calls}
 
 
 def run_with_room(call, label: str):
@@ -171,16 +159,18 @@ def run_with_room(call, label: str):
         with slot.container():
             st.caption(label)
             st.iframe(
-                render_room(phase=phase, started_at_ms=started_ms, done=phase == "SEALED"),
+                render_room(phase=phase, started_at_ms=started_ms, done=False),
                 height=room_height(),
             )
 
-    # Show the opening frame at once, so the room is up before Genie's first phase lands.
-    on_status("SUBMITTED", 0.0)
-    try:
-        call(on_status)
-    finally:
-        slot.empty()
+    on_status("PENDING", 0.0)
+    result = call(on_status)
+    with slot.container():
+        st.caption(label)
+        st.iframe(
+            render_room(phase="DONE", started_at_ms=started_ms, done=True), height=room_height()
+        )
+    return result
 
 
 def mapping_panel(settings: Settings, docket: list[Case]) -> None:
@@ -261,78 +251,57 @@ def mapping_panel(settings: Settings, docket: list[Case]) -> None:
         )
 
 
-# How many folders lie across the desk in one row. The design draws four abreast at roughly
-# 240px each; five fits the same span and is what this docket actually holds. Streamlit
-# columns stack rather than shrink below its own breakpoint, so this is a desktop figure and
-# the narrow layout falls out of that stacking rather than out of a second rule here.
-FOLDERS_PER_ROW = 5
-
-
-def beat_claim(settings: Settings) -> None:
-    # The design's opening: where you are, what is on the desk, and the one sentence that
-    # says what the app refuses to do. Centred over the lamp rather than ranged left, which
-    # is what makes the docket read as a room you have walked into.
-    st.markdown(
-        '<div class="pi-hero">'
-        '<p class="pi-hero-where">City archive &middot; after hours</p>'
-        '<h2 class="pi-hero-line">Rumours on the desk.</h2>'
-        '<p class="pi-hero-sub">The archive will not tell you which are true.</p>'
-        '<p class="pi-hero-rule">Genie writes the query &middot; the result stays sealed '
-        "until you stake a prediction</p>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    claim = ""
-    chosen: Case | None = None
-
-    # A fresh row of columns per group, rather than tall columns filled alternately.
-    # Streamlit stacks columns in DOM order when they collapse, so tall columns read
-    # "case 1, case 3, case 2, case 4" on a phone — visibly wrong, because the numbers are
-    # in the button labels. Row-wise, the same grid stacks 1, 2, 3, 4.
+def beat_archive(settings: Settings) -> None:
     docket = session_docket(settings)
-    for start in range(0, len(docket), FOLDERS_PER_ROW):
-        group = docket[start : start + FOLDERS_PER_ROW]
-        # Padded to a full row so a trailing group of two does not stretch its folders to
-        # half the desk each. The spare columns render nothing.
-        row = st.columns(FOLDERS_PER_ROW, gap="small")
-        for offset, case in enumerate(group):
-            with row[offset]:
-                if render_case_card(case, start + offset):
-                    chosen = case
-
-    mapping_panel(settings, docket)
-
-    if settings.free_text:
-        st.markdown(
-            '<div class="pi-vlabel">Case zero — bring your own</div>', unsafe_allow_html=True
-        )
-        # A form, so the claim is only sent when it is submitted. A bare text_input returns
-        # its value on every rerun, which would fire a Genie call at whatever had been
-        # typed so far.
-        with st.form("claim-form", clear_on_submit=False):
-            typed = st.text_input(
-                "Your claim",
-                placeholder="Something you have heard and never checked",
-                label_visibility="collapsed",
-            )
-            if st.form_submit_button("Test it", type="primary") and typed.strip():
-                claim = typed
-        st.caption(
-            "Most typed claims end in “can't tell” — the data has no column for them. "
-            "That is a win, not a failure."
-        )
-
-    # The two standing facts, along the bottom of the archive. Both are checkable rather than
-    # advertised: the first is what `tests/test_no_sql_in_app_code.py` enforces on every
-    # build, and the second is what having no account store and no cookie actually means.
+    run = session_run()
+    record = session_record()
     st.markdown(
-        '<div class="pi-standing">'
-        "<span>Every query is written by Genie &mdash; this app ships zero SQL</span>"
-        "<span>No accounts &middot; the session dies with the tab</span>"
-        "</div>",
+        '<span class="pi-archive"></span>'
+        + header_bar(
+            run, kit=len(record.antibodies), docket_size=len(docket), source_url=settings.source_url
+        ),
         unsafe_allow_html=True,
     )
+    st.markdown(hero(len(docket)), unsafe_allow_html=True)
+
+    closed = closed_verdicts(run)
+    up_next = next((case.key for case in docket if case.key not in closed), None)
+    chosen: Case | None = None
+    claim = ""
+
+    # One wrapping row: the design's drawer, which lays four abreast and lets the fifth
+    # fall to the next line. Streamlit columns are made to wrap by the archive's CSS.
+    columns = st.columns(len(docket) + (1 if settings.free_text else 0), gap="small")
+    for index, case in enumerate(docket):
+        with columns[index]:
+            if render_folder(case, index, up_next=case.key == up_next, closed=closed.get(case.key)):
+                chosen = case
+    if settings.free_text:
+        with columns[-1]:
+            if render_own_folder():
+                st.session_state.own_open = not st.session_state.get("own_open", False)
+                st.rerun()
+        if st.session_state.get("own_open"):
+            # A form, so the claim is only sent when it is submitted. A bare text_input
+            # returns its value on every rerun, which would fire a Genie call at whatever
+            # had been typed so far.
+            with st.form("claim-form", clear_on_submit=False):
+                typed = st.text_input(
+                    "Your rumour",
+                    placeholder="write your own rumour here .........",
+                    label_visibility="collapsed",
+                )
+                if st.form_submit_button("Test it", type="primary") and typed.strip():
+                    claim = typed.strip()
+            st.markdown(
+                '<div class="pi-own-note">Most typed claims end in &ldquo;can&rsquo;t tell&rdquo; '
+                "&mdash; the data has no column for them. That is a win, not a failure.</div>",
+                unsafe_allow_html=True,
+            )
+
+    st.markdown(footer(OFFLINE_NOTE if settings.offline else None), unsafe_allow_html=True)
+    mapping_panel(settings, docket)
+    st.iframe(archive_script(), height=1)
 
     if chosen is None and not claim:
         return
@@ -348,143 +317,28 @@ def beat_claim(settings: Settings) -> None:
         st.warning(str(exc))
         return
 
-    # The room renders here, once, directly after the grid — not inside the column of the
-    # folder that was clicked. Writing into a container created inside a column AFTER the
-    # loop has emitted later rows makes Streamlit re-emit that column's block, and the
-    # docket grew a second, greyed-out copy of the case below the real one. The frame
-    # brings itself into view on its first phase, which is what the container was reaching
-    # for anyway.
+    # The room renders here, once, directly after the drawer — not inside the column of
+    # the folder that was clicked. Writing into a container created inside a column AFTER
+    # the loop has emitted later columns makes Streamlit re-emit that column's block, and
+    # the docket grew a second, greyed-out copy of the case below the real one.
     run_with_room(investigation.ask_genie, "Genie is working out how to check that…")
     st.session_state.investigation = investigation
     st.session_state.scroll_to_top = True
+    st.session_state.scene_enter = True
     st.rerun()
 
 
-def beat_instrument(inv: Investigation) -> None:
-    turn = inv.first
-    assert turn is not None
-
-    st.markdown(
-        # The marker that turns this screen into the board. Emitted with the claim because
-        # every screen that shows a claim is a case being worked, and none of the others is.
-        f'<span class="pi-board"></span>'
-        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        step_rail(2, "Genie wrote a query to test it"),
-        unsafe_allow_html=True,
-    )
-
-    left, right = st.columns([1.15, 0.85], gap="large")
-    with left:
-        # The annotated panel carries its own label, so the page does not print a second
-        # one above it. This is the screen the whole bet is placed on, so it is the screen
-        # where the query has to be readable rather than merely present.
-        st.iframe(
-            render_query_panel(turn.sql, label="The query Genie wrote"),
-            height=panel_height(turn.sql),
-        )
-        st.markdown(custody_line(turn), unsafe_allow_html=True)
-        st.markdown(
-            seal_panel(
-                opened=False,
-                tag=evidence_tag(turn),
-                question=(
-                    "Before you look — lock your call. Does this claim survive a "
-                    "<em>fair</em> check?"
-                ),
-            ),
-            unsafe_allow_html=True,
-        )
-    with right:
-        st.markdown('<div class="pi-vlabel">How it got there</div>', unsafe_allow_html=True)
-        render_thoughts(turn)
-
-    st.divider()
-    st.markdown(
-        step_rail(3, "Lock your call")
-        + '<h2 class="pi-bigq">Does this claim survive a fair check?</h2>',
-        unsafe_allow_html=True,
-    )
-    # The stake before the call. It is what makes the call cost something, and a stake
-    # chosen after the buttons reads as an afterthought. The rule is stated where the
-    # chips are chosen, in the one sentence the whole scoring layer reduces to.
-    stake_label = st.radio(
-        "How sure are you?",
-        [f"{s.label} ×{s.multiplier}" for s in Stake],
-        horizontal=True,
-        key="stake",
-        help=(
-            "Your stake multiplies what the call is worth — and what it costs. "
-            "Sure and wrong is the expensive kind of wrong."
-        ),
-    )
-    stake = next(s for s in Stake if stake_label.startswith(s.label))
-    st.markdown(
-        f'<div class="pi-stakeline">Called right: +{CALL_POINTS * stake.multiplier} · '
-        f"called wrong: −{CALL_POINTS * stake.multiplier}</div>",
-        unsafe_allow_html=True,
-    )
-
-    # The estimate, where the case asks for one. It sits above the call buttons rather
-    # than beside them because it is the first half of the same commitment: place the
-    # number, then say what it means. Both are locked by the one click below.
-    guess = gap_estimate(inv)
-
-    # "The data can't say" is a call only on a claim the player typed. Every docket case
-    # was probed to a verdict, so there it would be a button that only ever loses.
-    calls = [Call.HOLDS_UP, Call.TRICK] + ([Call.CANT_SAY] if inv.case is None else [])
-    columns = st.columns(len(calls))
-    for column, call in zip(columns, calls, strict=True):
-        if column.button(call.value, width="stretch", key=f"call-{call.name}"):
-            with st.spinner("Opening the seal…"):
-                inv.commit_call(call, stake, guess)
-            # The reveal reads top-down: the call, the estimate against the real gap, the
-            # seal breaking, then the rows. Left where the buttons were, the player landed
-            # on the rows and read the ending first.
-            st.session_state.scroll_to_top = True
-            st.rerun()
+# -- scene two: the board -------------------------------------------------------------
 
 
-def cross_examine(inv: Investigation, label: str) -> None:
-    """The follow-up, in the player's own words if they want it.
-
-    This was a button. Pressing a button the app had already written is watching a
-    cross-examination; typing the question is conducting one, and the flip that follows
-    belongs to the player rather than to the app. It costs no extra Genie call, and the
-    app still writes no SQL — the words go into the question, Genie writes the query.
-
-    Pre-filled rather than blank on purpose. The suggested wording is what the probe
-    measured producing the repaired query on live Genie, so accepting it keeps the
-    docket's arcs reliable; a blank box would make every case a coin-flip on phrasing and
-    would put the demo at the mercy of whatever gets typed on the day.
-    """
-    default = inv.case.follow_up if inv.case else repair_question()
-    st.markdown(
-        '<div class="pi-vlabel">Your cross-examination — change it if you want</div>',
-        unsafe_allow_html=True,
-    )
-    with st.form(f"repair-{inv.run_key}", clear_on_submit=False):
-        asked = st.text_input(
-            "Ask Genie a fairer question",
-            value=default,
-            label_visibility="collapsed",
-            key=f"repair-text-{inv.run_key}",
-        )
-        submitted = st.form_submit_button(label, type="primary")
-    st.caption(
-        "Genie writes the SQL either way — this is the question, not the query. Your own "
-        "wording may not land the trick, and if it does not, the verdict honestly will "
-        "not move."
-    )
-    if submitted:
-        run_with_room(
-            lambda on_status: inv.repair(on_status, asked=asked),
-            "Genie is rewriting the query…",
-        )
-        st.session_state.scroll_to_flip = True
-        st.rerun()
+def case_number(inv: Investigation) -> int:
+    """The case's number on the docket, one-based; 0 for a rumour someone typed."""
+    if inv.case is None:
+        return 0
+    for index, case in enumerate(session_docket()):
+        if case.key == inv.case.key:
+            return index + 1
+    return 0
 
 
 def gap_estimate(inv: Investigation) -> float | None:
@@ -495,8 +349,8 @@ def gap_estimate(inv: Investigation) -> float | None:
     "no gap at all" is a real answer and on the maths case very nearly the right one.
 
     The mark is held in session state and handed back to the component on every render,
-    because a Streamlit rerun triggered by anything else on this screen — changing the
-    stake, most obviously — rebuilds the iframe from scratch and would otherwise wipe it.
+    because a Streamlit rerun triggered by anything else on this screen — picking a slip,
+    most obviously — rebuilds the iframe from scratch and would otherwise wipe it.
     """
     if inv.case is None or inv.case.estimate is None:
         return None
@@ -505,7 +359,7 @@ def gap_estimate(inv: Investigation) -> float | None:
     held = st.session_state.get(slot)
 
     st.markdown(
-        '<div class="pi-vlabel">Mark the gap — before you look</div>', unsafe_allow_html=True
+        '<div class="pi-vlabel">Mark the gap &mdash; before you look</div>', unsafe_allow_html=True
     )
     marked = gap_mark(
         prompt=spec.prompt,
@@ -522,221 +376,213 @@ def gap_estimate(inv: Investigation) -> float | None:
     if marked:
         st.session_state[slot] = marked
         held = marked
-    st.caption(
-        "Optional, and it can only earn — a wide mark costs nothing. Guessing where the "
-        "number lands before you see it is the part that makes the answer stick."
-    )
     return float(held["value"]) if held else None
 
 
-def beat_reveal(inv: Investigation) -> None:
-    analysis = inv.first_analysis
-    assert analysis is not None
+def wager_panel(inv: Investigation) -> None:
+    """THE WAGER: pick a slip, stake a coin, break the seal.
 
-    st.markdown(
-        # The marker that turns this screen into the board. Emitted with the claim because
-        # every screen that shows a claim is a case being worked, and none of the others is.
-        f'<span class="pi-board"></span>'
-        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
-        unsafe_allow_html=True,
+    The design's three-step wager. The slip and the coin are choices held in session
+    state; only the seal commits, and it stays dim until both are on record — which is
+    what makes the call cost something before any row is fetched.
+    """
+    pick_slot, stake_slot = f"pick-{inv.run_key}", f"stake-{inv.run_key}"
+    picked = st.session_state.get(pick_slot)
+    staked = st.session_state.get(stake_slot)
+    # "The data can't say" is a call only on a claim the player typed. Every docket case
+    # was probed to a verdict, so there it would be a slip that only ever loses.
+    calls = [Call.HOLDS_UP, Call.TRICK] + ([Call.CANT_SAY] if inv.case is None else [])
+
+    st.markdown(wager_head("Does this claim survive a <b>fair</b> check?"), unsafe_allow_html=True)
+    slips, stake, seal = st.columns([1.5, 1.1, 0.9], gap="medium")
+    with slips:
+        for call in calls:
+            on = picked == call.name
+            with st.container(key=f"slip-{call.name}-{'on' if on else 'off'}"):
+                if st.button(call.value, key=f"pick-{call.name}", width="stretch"):
+                    st.session_state[pick_slot] = call.name
+                    st.rerun()
+        guess = gap_estimate(inv)
+    with stake:
+        st.markdown('<div class="pi-stake-label">Stake</div>', unsafe_allow_html=True)
+        with st.container(key="coins"):
+            coins = st.columns(3)
+            for column, option in zip(coins, Stake, strict=True):
+                on = staked == option.name
+                with column, st.container(key=f"coin-{option.name}-{'on' if on else 'off'}"):
+                    if st.button(
+                        f"{option.label} **×{option.multiplier}**", key=f"stake-{option.name}"
+                    ):
+                        st.session_state[stake_slot] = option.name
+                        st.rerun()
+        st.markdown(
+            '<div class="pi-stake-note">Sure &amp; wrong is the expensive kind of wrong</div>',
+            unsafe_allow_html=True,
+        )
+    with seal:
+        ready = picked is not None and staked is not None
+        with st.container(key="seal"):
+            if st.button("Break the seal", key="break-seal", disabled=not ready):
+                assert picked is not None and staked is not None
+                inv.commit_call(Call[picked], Stake[staked], guess)
+                st.session_state.scroll_to_top = True
+                st.rerun()
+        hint = seal_hint(picked=picked is not None, staked=staked is not None)
+        st.markdown(f'<div class="pi-seal-hint">{hint}</div>', unsafe_allow_html=True)
+
+
+def call_chit(inv: Investigation) -> str:
+    """The call, standing, as the design's torn chit. At this beat a "trick" call looks
+    lost and a "holds up" call looks won, and neither is settled: the first verdict is the
+    witness's testimony and the cross-examination decides."""
+    if inv.call is None or inv.stake is None:
+        return ""
+    standing = " &mdash; the cross-examination decides" if inv.can_repair else ""
+    return (
+        f'<div class="pi-chit">Called: {html.escape(inv.call.value)} &middot; '
+        f"staked &times;{inv.stake.multiplier}{standing}</div>"
     )
-    st.markdown(step_rail(4, "The result"), unsafe_allow_html=True)
 
-    # The call, standing. At this beat a "trick" call looks lost and a "holds up" call
-    # looks won, and neither is settled: the first verdict is the witness's testimony
-    # and the cross-examination decides. Saying so here is what makes the reveal a
-    # beat rather than an answer.
-    st.markdown(call_line(inv), unsafe_allow_html=True)
 
-    # The mark against the truth. This is the beat the estimate exists for: not the
-    # guessing, the *gap between the guess and the data*, which is the thing the CHI
-    # result says people remember. Rendered before the rows, so it lands as the answer to
-    # the question the player just committed to rather than as a footnote to the table.
-    st.markdown(estimate_line(inv), unsafe_allow_html=True)
+def cross_examine(inv: Investigation, label: str) -> None:
+    """The follow-up, in the player's own words if they want it.
 
-    if inv.first is not None and inv.first.has_query:
-        # The same seal the child was just looking at, opened. Rendering it here rather
-        # than simply showing the rows means the reveal reads as *this* result arriving,
-        # not as a new screen — and the demo can cut between the two poses.
-        #
-        # The column split matches beat_instrument's exactly, and that is the whole point:
-        # measured full-width the open seal came out 1080px against the locked seal's 589,
-        # so the cut read as two unrelated frames rather than one object opening.
-        seal_column, _ = st.columns([1.15, 0.85], gap="large")
-        with seal_column:
-            wager = (
-                f"{inv.call.value} · staked {inv.stake.label.lower()} (×{inv.stake.multiplier})"
-                if inv.stake is not None and inv.call is not None
-                else None
-            )
+    Pre-filled rather than blank on purpose. The suggested wording is what the probe
+    measured producing the repaired query on live Genie, so accepting it keeps the
+    docket's arcs reliable; a blank box would make every case a coin-flip on phrasing.
+    The words go into the question, Genie writes the query — the app still writes no SQL.
+    """
+    default = inv.case.follow_up if inv.case else repair_question()
+    with st.form(f"repair-{inv.run_key}", clear_on_submit=False):
+        asked = st.text_input(
+            "Ask Genie a fairer question",
+            value=default,
+            label_visibility="collapsed",
+            key=f"repair-text-{inv.run_key}",
+        )
+        submitted = st.form_submit_button(f"{label} →")
+    st.markdown(under(FLIP_LINE), unsafe_allow_html=True)
+    if submitted:
+        # The repair does not run here. `run_with_room` reruns from inside this panel, and a
+        # rerun from a nested container to the same scene leaves this panel's elements orphaned
+        # in the DOM behind the retrial's — two desks stacked. Stashed and run at the top of
+        # `beat_case` instead, where the room replaces the whole desk cleanly, the way
+        # `ask_genie` runs at the top of the archive.
+        st.session_state.repairing = asked
+        st.rerun()
+
+
+def review_panel(inv: Investigation) -> None:
+    """SEAL BROKEN · REVIEW: is that a fair way to check it? Then cross-examine."""
+    nudge = inv.case.nudge if inv.case else DEFAULT_NUDGE
+    question, _, rest = nudge.partition("** ")
+    question = question.strip("* ")
+    left, right = st.columns([1.6, 1], gap="medium")
+    with left:
+        st.markdown(call_chit(inv) + estimate_line(inv), unsafe_allow_html=True)
+        if inv.can_repair:
             st.markdown(
-                seal_panel(opened=True, tag=evidence_tag(inv.first), wager=wager),
+                f'<div class="pi-review-q">{html.escape(question)}</div>'
+                f'<div class="pi-review-t">{html.escape(rest.strip())}</div>',
                 unsafe_allow_html=True,
             )
-        st.markdown(
-            f'<div class="pi-vlabel">Query v1 — Genie&rsquo;s first draft</div>'
-            f"{verdict_chip(analysis.verdict, arrive=True)}",
-            unsafe_allow_html=True,
-        )
-        st.iframe(
-            render_query_panel(inv.first.sql, label="Query v1 — as Genie wrote it"),
-            height=panel_height(inv.first.sql),
-        )
-        st.markdown(custody_line(inv.first), unsafe_allow_html=True)
-        render_table(inv.first_result)
-
-        # The chart that would have convinced them, with its own thumb on the scale
-        # showing. Only two means are needed, so it appears here rather than after the
-        # repair — the point is to catch the trick while the naive verdict still stands.
-        chart = render_headline_chart(group_means(inv.first_result))
-        if chart:
-            st.iframe(chart, height=300)
-    else:
-        # Genie wrote no query, so steps 2 and 3 never happened. Say so plainly and give
-        # this outcome the same verdict chip as any other, or it reads as the app
-        # skipping steps or breaking.
-        st.markdown(verdict_chip(analysis.verdict), unsafe_allow_html=True)
-        st.markdown(
-            "**There was no query to look at.** Genie could not turn that claim into a "
-            "question this data can answer, so there was nothing to seal and nothing to "
-            "predict. Working out that a claim *cannot* be checked with what you have is "
-            "a real result — often a more useful one than an answer.",
-        )
-
-    st.markdown(
-        f'<div class="pi-punch">{html.escape(analysis.reason)}</div>', unsafe_allow_html=True
-    )
-
-    if inv.can_repair:
-        st.divider()
-        # The case supplies both, because a typed claim and four different tricks cannot
-        # share one argument. The wording here is the free-text default, and it is also
-        # what the spread case says.
-        nudge = inv.case.nudge if inv.case else DEFAULT_NUDGE
-        label = inv.case.repair_label if inv.case else DEFAULT_REPAIR_LABEL
-        st.markdown(nudge)
-        cross_examine(inv, label)
-    else:
-        finish_button()
-
-
-def beat_repaired(inv: Investigation) -> None:
-    first, second = inv.first_analysis, inv.second_analysis
-    assert first is not None and second is not None
-
-    st.markdown(
-        # The marker that turns this screen into the board. Emitted with the claim because
-        # every screen that shows a claim is a case being worked, and none of the others is.
-        f'<span class="pi-board"></span>'
-        f'<h2 class="pi-claim">“{html.escape(inv.claim)}”</h2>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        step_rail(4, "The same claim, a fairer query"),
-        unsafe_allow_html=True,
-    )
-
-    # The flip, staged, before the evidence is laid out beneath it. Settled first so the
-    # chips it counts up to are the run's real total; the additions it lights up are the
-    # same token diff the side-by-side panels highlight, so the beat and the exhibit
-    # cannot disagree about what changed.
-    settlement = settle_into_run(inv)
-    run = session_run()
-    scored = next((c for c in run.calls if c.key == inv.run_key), None)
-    added = [
-        line.text.strip()
-        for line in diff_tokens(
-            inv.first.sql if inv.first else None, inv.second.sql if inv.second else None
-        )
-        if line.change is Change.ADDED
-    ]
-    st.iframe(
-        render_slam(
-            first=first.verdict,
-            second=second.verdict,
-            trick=inv.case.trick if inv.case and inv.case.turns_the_verdict else None,
-            follow_up=inv.transcript[-1],
-            added=added,
-            settlement=settlement,
-            stake_label=inv.stake.label if inv.stake else None,
-            points_before=scored.points_before if scored else run.points,
-            points_after=run.points,
-        ),
-        height=slam_height(),
-    )
-    # Land the player on the slam. They pressed the cross-examination a screen below where
-    # this renders, and the beat that pays for the whole case must not play to nobody.
-    if st.session_state.pop("scroll_to_flip", False):
-        bring_into_view(SLAM_MARKER)
-
-    # Column exhibits when the repair added columns; the weighting explanation when it
-    # added a GROUP BY instead. A breakdown adds no column at all, so the column narrator
-    # finds nothing and the paradox case reached this screen with no exhibits on it —
-    # missing precisely the explanation that stops Simpson's paradox being a magic trick.
-    exhibits = exhibits_for(
-        inv.first.sql if inv.first else None,
-        inv.second.sql if inv.second else None,
-        inv.second_result,
-        second,
-    ) or weighting_exhibits(inv.second_result)
-
-    left, right = st.columns(2, gap="large")
-    with left:
-        # The stamp only lands when the arithmetic says it should: lesson_landed is
-        # exactly "v1 said HOLDS and v2 said BUSTED". When it does not, the same layout
-        # plays a quieter line rather than a triumphal one it has not earned.
-        stamp = '<span class="pi-stamp">Overturned</span>' if inv.lesson_landed else ""
-        st.markdown(
-            f'<div class="pi-vlabel">The first verdict</div>'
-            f'<div class="pi-chiprow">{verdict_chip(first.verdict)}{stamp}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(render_sql(inv.first.sql if inv.first else None), unsafe_allow_html=True)
-        st.markdown(custody_line(inv.first), unsafe_allow_html=True)
-        render_table(inv.first_result)
+        else:
+            reason = inv.first_analysis.reason if inv.first_analysis else ""
+            st.markdown(
+                '<div class="pi-review-q">There was no query to look at.</div>'
+                f'<div class="pi-review-t">{html.escape(reason)} Working out that a claim '
+                "<strong>cannot</strong> be checked with what you have is a real result "
+                "&mdash; often a more useful one than an answer.</div>",
+                unsafe_allow_html=True,
+            )
     with right:
-        st.markdown(
-            f'<div class="pi-vlabel">The retrial — after your follow-up</div>'
-            f'<div class="pi-chiprow">{verdict_chip(second.verdict)}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            render_diff(
-                inv.first.sql if inv.first else None,
-                inv.second.sql if inv.second else None,
-                exhibits,
-            ),
-            unsafe_allow_html=True,
-        )
-        # The strongest line in the app for "Genie is the engine": the id says this was
-        # the same exchange continued, not a second question asked from scratch.
-        st.markdown(
-            custody_line(inv.second, continues=same_conversation(inv.first, inv.second)),
-            unsafe_allow_html=True,
-        )
-        render_table(inv.second_result)
+        if inv.can_repair:
+            label = inv.case.repair_label if inv.case else DEFAULT_REPAIR_LABEL
+            cross_examine(inv, label)
+        else:
+            close_button(inv)
 
-    st.markdown(
-        f'<div class="pi-said">You asked: “{html.escape(inv.transcript[-1])}”</div>',
-        unsafe_allow_html=True,
-    )
 
+def close_button(inv: Investigation) -> None:
+    number = case_number(inv)
+    label = f"Close the case — mint antibody Nº {number}" if number else "Close the case"
+    if st.button(label, key="close-case", type="primary", width="stretch"):
+        st.session_state.finished = True
+        st.session_state.scroll_to_top = True
+        st.rerun()
+    st.markdown(under(CLOSE_LINE), unsafe_allow_html=True)
+
+
+def retrial_panel(inv: Investigation, settlement) -> None:
+    """RETRIAL · VERDICT FLIPPED: what the fair query did, and what it paid."""
+    second = inv.second_analysis
+    left, right = st.columns([1.6, 1], gap="medium")
+    with left:
+        chits = ""
+        if settlement is not None:
+            if settlement.outcome is Outcome.VOID:
+                chits = (
+                    '<div class="pi-chit pi-chit--void">The data could not rule &mdash; '
+                    "nothing scored, nothing lost</div>"
+                )
+            else:
+                chits = "".join(
+                    f'<div class="pi-chit">{a.points:+d} {html.escape(a.label)}</div>'
+                    for a in settlement.awards
+                )
+        if inv.lesson_landed:
+            line = "Same table, same claim, one more column &mdash; and the answer changed."
+            sub = (
+                f"{html.escape(second.reason) if second else ''} That is why you read the "
+                "query, not the answer."
+            )
+        else:
+            line = "Same table, same claim, a fairer query &mdash; and the answer stood."
+            sub = html.escape(second.reason) if second else ""
+        st.markdown(
+            f'{chits}<div class="pi-retrial-line">{line}</div>'
+            f'<div class="pi-retrial-sub">{sub}</div>',
+            unsafe_allow_html=True,
+        )
+    with right:
+        close_button(inv)
+
+
+def closed_panel(inv: Investigation) -> None:
+    number = case_number(inv)
+    label, tone = verdict_chip_text(inv.verdict)
+    case = f"Case N&ordm; {number:02d}" if number else "Your case"
+    left, right = st.columns([1.6, 1], gap="medium")
+    with left:
+        st.markdown(
+            f'<div class="pi-closed-line">{case} closed &mdash; <span class="v {tone}">'
+            f"{html.escape(label)}.</span> The trick is in your kit now.</div>",
+            unsafe_allow_html=True,
+        )
+    with right:
+        if st.button("Return to the archive →", key="return", width="stretch"):
+            start_over()
+
+
+def verdict_chip_text(verdict: Verdict) -> tuple[str, str]:
+    from prove_it.ui.style import VERDICT_TEXT  # noqa: PLC0415
+
+    return VERDICT_TEXT[verdict]
+
+
+def exhibits_below(inv: Investigation, exhibits) -> None:
+    """The pictures the retrial produced, pinned below the desk: the added columns, and
+    whichever chart the returned rows can support — a breakdown gets the reversal, a
+    comparison with spreads gets the cloud, a run of years gets the window."""
     if exhibits:
+        st.markdown(
+            '<div class="pi-vlabel">What the added columns showed</div>', unsafe_allow_html=True
+        )
         st.markdown(render_exhibits(exhibits), unsafe_allow_html=True)
-
-    # Both pictures are offered to every case and drawn by whichever one the returned rows
-    # can actually support — the same shape-not-case rule the judges follow. A breakdown
-    # gets the reversal; a comparison with spreads gets the evidence room; a claim someone
-    # typed gets whichever its rows happen to fit.
     subgroups, pooled = subgroup_rates(inv.second_result) if inv.second_result else ([], (0.0, 0.0))
     reversal = render_reversal(subgroups, pooled)
     if reversal:
         st.iframe(reversal, height=reversal_height(subgroups) + 150)
-
-    # The band is the years the NAIVE query was asked about, so it is read off the first
-    # turn's rows rather than the repaired ones. Without that the chart would draw the
-    # whole run and quietly win the argument by leaving the window out — the same trick
-    # in the other direction.
     full_series = series_points(inv.second_result)
     naive_years = [year for year, _ in series_points(inv.first_result)]
     series = render_window(
@@ -745,34 +591,290 @@ def beat_repaired(inv: Investigation) -> None:
     )
     if series:
         st.iframe(series, height=window_height() + 150)
-
-    # The app has been asserting "nearly everyone overlaps" in prose. This is the first
-    # time a child can see it: the same dots, once where the averages put them and once
-    # where they actually are.
     shapes = group_shapes(inv.second_result)
     cloud = render_cloud(shapes)
     if cloud:
         st.iframe(cloud, height=cloud_height(shapes) + 168)
 
-    st.markdown(f'<div class="pi-punch">{html.escape(second.reason)}</div>', unsafe_allow_html=True)
-    if inv.lesson_landed:
-        st.info(
-            "Same table, same claim, one more column — and the answer changed. "
-            "That is why reading the query matters more than reading the answer."
+
+def headline_below(inv: Investigation) -> None:
+    """The chart that would have convinced them, with its own thumb on the scale showing.
+    Only two means are needed, so it appears at the reveal — the point is to catch the
+    trick while the naive verdict still stands."""
+    chart = render_headline_chart(group_means(inv.first_result))
+    if chart:
+        st.markdown(
+            '<div class="pi-vlabel">The chart the rumour would have used</div>',
+            unsafe_allow_html=True,
+        )
+        st.iframe(chart, height=300)
+
+
+def receipt_below(inv: Investigation, settlement) -> None:
+    """The printed artifact you leave with, laid on the desk under the closed case: what
+    was found, the run so far, both queries in full, every trick met, and the ledger of
+    ids a judge can check against Genie's own history."""
+    final = inv.final_analysis
+    assert final is not None
+    rows = [
+        ("Queries written by Genie", str(inv.queries_written_by_genie)),
+        ("Queries written by this app", "0"),
+    ]
+    if final.delta is not None:
+        rows.append(("Gap found", f"{abs(final.delta):.1f}"))
+    if final.pooled_spread is not None:
+        rows.append(("Spread within groups", f"~{final.pooled_spread:.0f}"))
+    if inv.call is not None and inv.stake is not None:
+        rows.append(("Your call", f"{inv.call.value} · {inv.stake.label}"))
+    if settlement is not None:
+        rows.append(("Points", f"{settlement.points:+d}" if settlement.points else "no score"))
+    body = "".join(f'<div class="pi-rrow"><span>{k}</span><span>{v}</span></div>' for k, v in rows)
+    st.markdown('<div class="pi-vlabel">Your receipt</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="pi-receipt">{verdict_chip(final.verdict)}'
+        f'<h2 class="pi-claim" style="margin:10px 0">“{html.escape(inv.claim)}”</h2>'
+        f"{body}</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(f'<div class="pi-punch">{html.escape(final.reason)}</div>', unsafe_allow_html=True)
+
+    # The run so far: rank, score, streak, and how often each level of confidence was
+    # borne out. The share strip is plain text and spoiler-free — how you did, never which
+    # claim was which — so it can be pasted anywhere without ruining the docket.
+    run = session_run()
+    if run.cases_called:
+        rank = rank_for(run.points)
+        upcoming = next_rank(run.points)
+        to_next = (
+            f" · {upcoming.floor - run.points} to {upcoming.title}" if upcoming else " · top rank"
+        )
+        lines = " · ".join(
+            f"{line.stake.label}: {line.right} of {line.made} right" for line in calibration(run)
+        )
+        st.markdown(
+            f'<div class="pi-run"><div class="pi-vlabel">Case closed</div>'
+            f'<div class="pi-rank">{html.escape(rank.title)}</div>'
+            f'<div class="pi-runrow">{run.points} pts{html.escape(to_next)} · '
+            f"{run.cases_called} of {len(session_docket())} cases · streak {run.streak}</div>"
+            f'<div class="pi-runrow">{html.escape(lines)}</div></div>',
+            unsafe_allow_html=True,
+        )
+        st.code(f"Prove It · {rank.title} · {run.points} pts\n{run.share_strip()}", language=None)
+
+    # R9: the receipt carries the queries themselves rather than a count of them. A child
+    # showing someone what Genie wrote is the entire point of the exercise. The rows the
+    # board could not hold are here in full.
+    for label, turn, table in (
+        ("Query v1", inv.first, inv.first_result),
+        ("Query v2", inv.second, inv.second_result),
+    ):
+        if turn is not None and turn.has_query:
+            st.iframe(
+                render_query_panel(turn.sql, label=f"{label} — written by Genie"),
+                height=panel_height(turn.sql),
+            )
+            render_table(table)
+
+    render_antibody_wall(session_record())
+    panel = provenance_panel(inv)
+    if panel:
+        with st.expander("Where these queries came from"):
+            st.markdown(panel, unsafe_allow_html=True)
+
+
+def kit_overlay(inv: Investigation) -> None:
+    """The minted card over the board, then the share card. Pinning it puts it away."""
+    number = case_number(inv)
+    docket = session_docket()
+    run = session_run()
+    called = {c.key for c in run.calls}
+    kit = []
+    for index, case in enumerate(docket):
+        state = (
+            "this"
+            if inv.case and case.key == inv.case.key
+            else ("done" if case.key in called else "open")
+        )
+        kit.append((index + 1, state))
+    kit.append((0, "own"))
+    if inv.case is not None:
+        trick, lesson, wild = inv.case.trick, inv.case.lesson, inv.case.in_the_wild
+    else:
+        trick, lesson, wild = (
+            verdict_chip_text(inv.verdict)[0],
+            inv.final_analysis.reason if inv.final_analysis else "",
+            "Any rumour the data has no column for.",
+        )
+    if st.session_state.get("share_open"):
+        record = custody_of(inv.first)
+        conversation = record.short_conversation if record else "—"
+        args = dict(
+            number=number,
+            claim=inv.claim,
+            trick=trick,
+            reason=inv.final_analysis.reason if inv.final_analysis else "",
+            verdict=inv.verdict,
+            real_data=inv.case.real_data if inv.case else False,
+            queries=inv.queries_written_by_genie,
+            flipped=inv.lesson_landed,
+            conversation=conversation,
+        )
+        st.markdown(share_card(**args), unsafe_allow_html=True)
+        with st.container(key="share-actions"):
+            a, b, c = st.columns(3)
+            with a:
+                st.download_button(
+                    "Download the card",
+                    data=share_svg(**args),
+                    file_name=f"prove-it-case-{number:02d}.svg",
+                    mime="image/svg+xml",
+                    key="share-download",
+                )
+            with b:
+                st.iframe(
+                    copy_frame(share_caption(claim=inv.claim, trick=trick, verdict=inv.verdict)),
+                    height=48,
+                )
+            with c, st.container(key="share-back"):
+                if st.button("← Back to the card", key="share-back-btn"):
+                    st.session_state.share_open = False
+                    st.rerun()
+        return
+    st.markdown(
+        antibody_card(
+            number=number,
+            case=inv.case,
+            trick=trick,
+            lesson=lesson,
+            wild=wild,
+            verdict=inv.verdict,
+            kit=kit,
+        ),
+        unsafe_allow_html=True,
+    )
+    with st.container(key="kit-actions"):
+        a, b = st.columns(2)
+        with a:
+            if st.button("Share the case card →", key="kit-share", type="primary"):
+                st.session_state.share_open = True
+                st.rerun()
+        with b:
+            if st.button("Pin it to the kit →", key="kit-pin"):
+                st.session_state.card_pinned = True
+                st.rerun()
+
+
+def beat_case(inv: Investigation, settings: Settings, *, finished: bool) -> None:
+    # The follow-up, when one was just submitted: run it here, at the desk's top, with the
+    # interrogation room in place of the whole board — not inside the review panel, where a
+    # rerun would strand that panel behind the retrial. Then rerun to the settled retrial.
+    asked = st.session_state.pop("repairing", None)
+    if asked is not None and inv.stage is Stage.REVEALED:
+        run_with_room(
+            lambda on_status: inv.repair(on_status, asked=asked),
+            "Genie is rewriting the query…",
+        )
+        st.session_state.scroll_to_top = True
+        st.rerun()
+
+    phase = phase_of(inv, finished=finished)
+    number = case_number(inv)
+    run = session_run()
+    settlement = settle_into_run(inv) if phase in ("retrial", "closed") else None
+    scored = next((c for c in run.calls if c.key == inv.run_key), None)
+    promoted = (
+        scored is not None and rank_for(scored.points_before).title != rank_for(run.points).title
+    )
+    title = inv.case.title if inv.case else "Your own rumour"
+    exhibits = (
+        exhibits_for(
+            inv.first.sql if inv.first else None,
+            inv.second.sql if inv.second else None,
+            inv.second_result,
+            inv.second_analysis,
+        )
+        or weighting_exhibits(inv.second_result)
+        if phase in ("retrial", "closed") and inv.second_analysis is not None
+        else []
+    )
+    if finished:
+        # Recorded once per case, on closing. `Record.add` is idempotent per trick, so a
+        # rerun of this beat cannot stack the same card up.
+        session_record().add(inv.case, inv.claim, inv.verdict)
+
+    # The bar.
+    back, bar = st.columns([1, 9], gap="small")
+    with back:
+        if st.button("← The archive", key="start-over"):
+            start_over()
+    with bar:
+        st.markdown(
+            case_bar(
+                number=number,
+                title=title,
+                claim=inv.claim,
+                points=run.points,
+                rank=rank_for(run.points),
+                promoted=promoted,
+                source_url=settings.source_url,
+            ),
+            unsafe_allow_html=True,
         )
 
-    # The payout in prose as well as in the slam above: the slam is a canvas nobody can
-    # copy from or read with a screen reader, and the flow tests reach this line.
-    if settlement is not None:
-        st.markdown(payout_line(inv, settlement), unsafe_allow_html=True)
-    finish_button()
+    # The board.
+    st.iframe(
+        render_board(inv, number=number, phase=phase, exhibits=exhibits),
+        height=board_height(phase),
+    )
+
+    # The desk.
+    gain = settlement.points if settlement is not None else 0
+    slate_phase = phase if phase != "retrial" or inv.lesson_landed else "retrial-stood"
+    with st.container(key="desk"):
+        left, middle, right = st.columns([1.1, 3.4, 1.4], gap="medium")
+        with left:
+            st.markdown(
+                slate(number=number, title=title, phase=slate_phase, gain=gain),
+                unsafe_allow_html=True,
+            )
+        # Keyed by phase, so Streamlit treats each phase's panel as its own subtree and
+        # swaps it whole. With one stable key the review panel's elements were kept in the
+        # DOM behind the retrial's — two desks stacked — because Streamlit diffs by path and
+        # matched the old children to the new ones. `run_with_room` reruns from inside this
+        # container, which is what surfaced it.
+        with middle, st.container(key=f"panel-{phase}"):
+            if phase == "wager":
+                wager_panel(inv)
+            elif phase == "revealed":
+                review_panel(inv)
+            elif phase == "retrial":
+                retrial_panel(inv, settlement)
+            else:
+                closed_panel(inv)
+        with right:
+            st.markdown(props(), unsafe_allow_html=True)
+
+    # What lies below.
+    with st.container(key="below"):
+        if phase == "revealed":
+            headline_below(inv)
+        if phase in ("retrial", "closed"):
+            exhibits_below(inv, exhibits)
+        if phase == "closed":
+            receipt_below(inv, settlement)
+
+    if finished and not st.session_state.get("card_pinned"):
+        kit_overlay(inv)
+
+
+# -- session ---------------------------------------------------------------------------
 
 
 def session_record() -> Record:
-    """The wall, kept for as long as the browser tab is open and no longer.
+    """The kit, kept for as long as the browser tab is open and no longer.
 
     Persistence is ruled out, so this lives in session state beside the investigation.
-    A wall that outlived the tab would need somewhere to live and someone to own it.
+    A kit that outlived the tab would need somewhere to live and someone to own it.
     """
     if "record" not in st.session_state:
         st.session_state.record = Record()
@@ -785,8 +887,7 @@ def session_tables(settings: Settings | None = None) -> list[DiscoveredTable]:
     The single cache both the docket and the mapping panel draw from. It exists because
     `Settings.readable_tables()` makes a live Unity Catalog call, and Streamlit re-runs
     this entire script on every widget interaction — so an uncached caller puts a network
-    round-trip behind every button on the page. The mapping panel used to be exactly that
-    caller, and opening its own expander paid for a fresh catalog read.
+    round-trip behind every button on the page.
 
     `None` and `[]` are both cached: "the catalog could not be read" is an answer, and
     re-asking on every rerun would be slowest precisely when the workspace is unreachable.
@@ -822,9 +923,9 @@ def session_run() -> Run:
 
 def settle_into_run(inv: Investigation):
     """Settle this case's call onto the run, if a call was made. Returns the settlement
-    or None. Safe to call from both the retrial and the receipt — `Run.close` returns the
-    existing settlement on a repeat, and a case that skipped the retrial (a refusal, a
-    typed claim Genie could not answer) still gets settled at the receipt."""
+    or None. Safe to call from both the retrial and the closed case — `Run.close` returns
+    the existing settlement on a repeat, and a case that skipped the retrial (a refusal, a
+    typed claim Genie could not answer) still gets settled when it closes."""
     if inv.call is None or inv.stake is None:
         return None
     # The first verdict as well as the final one: the run pays for the OVERTURNING, and it
@@ -881,103 +982,14 @@ def render_antibody_wall(record: Record) -> None:
     st.markdown(f'<div class="pi-wall">{cards}</div>', unsafe_allow_html=True)
 
 
-def beat_receipt(inv: Investigation) -> None:
-    final = inv.final_analysis
-    assert final is not None
-
-    # Recorded once per case, on arrival at the receipt. `Record.add` is idempotent per
-    # trick, so a rerun of this beat — and Streamlit reruns it on every interaction —
-    # cannot stack the same card up.
-    session_record().add(inv.case, inv.claim, final.verdict)
-    settlement = settle_into_run(inv)
-
-    st.markdown(step_rail(5, "Your receipt"), unsafe_allow_html=True)
-
-    rows = [
-        ("Queries written by Genie", str(inv.queries_written_by_genie)),
-        ("Queries written by this app", "0"),
-    ]
-    if final.delta is not None:
-        rows.append(("Gap found", f"{abs(final.delta):.1f}"))
-    if final.pooled_spread is not None:
-        rows.append(("Spread within groups", f"~{final.pooled_spread:.0f}"))
-    if inv.call is not None and inv.stake is not None:
-        rows.append(("Your call", f"{inv.call.value} · {inv.stake.label}"))
-    if settlement is not None:
-        rows.append(("Points", f"{settlement.points:+d}" if settlement.points else "no score"))
-
-    body = "".join(f'<div class="pi-rrow"><span>{k}</span><span>{v}</span></div>' for k, v in rows)
-    st.markdown(
-        f'<span class="pi-board"></span>'
-        f'<div class="pi-receipt">{verdict_chip(final.verdict)}'
-        f'<h2 class="pi-claim" style="margin:10px 0">“{html.escape(inv.claim)}”</h2>'
-        f"{body}</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(f'<div class="pi-punch">{html.escape(final.reason)}</div>', unsafe_allow_html=True)
-
-    # The run so far: rank, score, and how often each level of confidence was borne out.
-    # The share strip is plain text and spoiler-free — how you did, never which claim was
-    # which — so it can be pasted anywhere without ruining the docket.
-    run = session_run()
-    if run.cases_called:
-        rank = rank_for(run.points)
-        upcoming = next_rank(run.points)
-        # The ladder is what makes a score read as progress rather than a tally, so the
-        # gap to the next rung is named whenever there is one.
-        to_next = (
-            f" · {upcoming.floor - run.points} to {upcoming.title}" if upcoming else " · top rank"
-        )
-        lines = " · ".join(
-            f"{line.stake.label}: {line.right} of {line.made} right" for line in calibration(run)
-        )
-        st.markdown(
-            f'<div class="pi-run"><div class="pi-vlabel">Case closed</div>'
-            f'<div class="pi-rank">{html.escape(rank.title)}</div>'
-            f'<div class="pi-runrow">{run.points} pts{html.escape(to_next)} · '
-            f"{run.cases_called} of {len(session_docket())} cases</div>"
-            f'<div class="pi-runrow">{html.escape(lines)}</div></div>',
-            unsafe_allow_html=True,
-        )
-        st.code(f"Prove It · {rank.title} · {run.points} pts\n{run.share_strip()}", language=None)
-
-    # R9: the receipt is meant to be a printable artifact of the investigation, so it
-    # carries the queries themselves rather than a count of them. A child showing someone
-    # what Genie wrote is the entire point of the exercise.
-    for label, turn in (("Query v1", inv.first), ("Query v2", inv.second)):
-        if turn is not None and turn.has_query:
-            st.iframe(
-                render_query_panel(turn.sql, label=f"{label} — written by Genie"),
-                height=panel_height(turn.sql),
-            )
-
-    # Full identifiers, folded away. "Queries written by this app: 0" is the app marking
-    # its own homework; these ids are the same claim made checkable against a record the
-    # app does not own. It belongs here, at the end, and nowhere near the sealed screen.
-    render_antibody_wall(session_record())
-
-    panel = provenance_panel(inv)
-    if panel:
-        with st.expander("Where these queries came from"):
-            st.markdown(panel, unsafe_allow_html=True)
-
-    if st.button("Check another claim"):
-        start_over()
-
-
 def start_over() -> None:
-    """Abandon the current investigation and go back to the claim screen."""
+    """Put the case back and return to the archive."""
     st.session_state.pop("investigation", None)
-    st.session_state.pop("finished", None)
+    for flag in ("finished", "card_pinned", "share_open"):
+        st.session_state.pop(flag, None)
     st.session_state.scroll_to_top = True
+    st.session_state.scene_enter = True
     st.rerun()
-
-
-def finish_button() -> None:
-    if st.button("Print my receipt", type="primary"):
-        st.session_state.finished = True
-        st.session_state.scroll_to_top = True
-        st.rerun()
 
 
 # -- entry ---------------------------------------------------------------------------
@@ -985,59 +997,33 @@ def finish_button() -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Prove It", page_icon="🔎", layout="wide")
-    st.markdown(CSS, unsafe_allow_html=True)
+    # One call per sheet, each beginning on its own line with its own <style>. Joined into
+    # one string, the font links on the first line turned the rest into a paragraph and
+    # the page opened on two thousand pixels of stylesheet printed as prose.
+    for sheet in (FONT_LINK, CSS, ARCHIVE_CSS, DESK_CSS, KIT_CSS):
+        st.markdown(sheet, unsafe_allow_html=True)
     settings = Settings.from_env()
 
     inv: Investigation | None = st.session_state.get("investigation")
+    finished = bool(st.session_state.get("finished"))
 
-    # Settle BEFORE the masthead draws, or the HUD shows the chips from the previous rerun
-    # while the payout line beneath it announces new ones — which it did, on a live
-    # screen. `settle_into_run` is idempotent, so the beats calling it again is harmless.
-    if inv is not None and (inv.stage is Stage.REPAIRED or st.session_state.get("finished")):
+    # Settle BEFORE anything draws, or the bar shows the points from the previous rerun
+    # while the chit beneath it announces new ones — which it did, on a live screen.
+    # `settle_into_run` is idempotent, so the beats calling it again is harmless.
+    if inv is not None and (inv.stage is Stage.REPAIRED or finished):
         settle_into_run(inv)
-    run = session_run()
 
-    # The masthead: wordmark, plate, and the run's numbers, all in one navy bar across the
-    # top of the sheet. The HUD lives here rather than in the page body because it is
-    # instrumentation about the session, not content — and it is what makes the docket read
-    # as one game rather than five separate pages.
-    st.markdown(
-        '<div class="pi-mast">'
-        # The app's name is the page's one first-level heading. Before this the document
-        # had no h1 at all, so a screen-reader user pressing "1" to jump to the top of the
-        # content landed nowhere, and the heading outline started at level 2.
-        '<h1 class="pi-logo">Prove It <span>&middot; The Evidence Room</span></h1>'
-        '<span class="pi-mast-right">'
-        # Always, rather than only once a case has been called. The design shows the score
-        # and the rank from the moment the archive opens, and a player who can see PTS 0 and
-        # RUMOUR HEARER on arrival knows there is something to climb — which is most of why
-        # the ladder is there.
-        f"{hud(run, len(session_docket()))}"
-        f"{source_link(settings.source_url)}"
-        "</span>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-    if settings.offline:
-        st.caption("Offline demo — replaying a recorded Genie conversation.")
+    if st.session_state.pop("scene_enter", False):
+        # The design swaps scenes by fading the new one in from slightly too large. The
+        # marker lasts one render, so a stake click does not replay the arrival.
+        st.markdown('<span class="pi-scene-enter"></span>', unsafe_allow_html=True)
     if st.session_state.pop("scroll_to_top", False):
         bring_into_view()
 
-    # Reachable at every stage. A player who picks the wrong claim, or a teacher moving a
-    # group along in a timed rotation, must not have to finish an investigation first.
-    if inv is not None and st.button("← Back to the docket", key="start-over"):
-        start_over()
-
     if inv is None:
-        beat_claim(settings)
-    elif st.session_state.get("finished"):
-        beat_receipt(inv)
-    elif inv.stage is Stage.INSTRUMENT:
-        beat_instrument(inv)
-    elif inv.stage is Stage.REVEALED:
-        beat_reveal(inv)
-    elif inv.stage is Stage.REPAIRED:
-        beat_repaired(inv)
+        beat_archive(settings)
+    elif inv.stage in (Stage.INSTRUMENT, Stage.REVEALED, Stage.REPAIRED):
+        beat_case(inv, settings, finished=finished)
     else:
         # Stage.CLAIM with a stored investigation means ask_genie never ran. Fail loudly
         # rather than rendering a blank page, which is far harder to diagnose.

@@ -67,6 +67,17 @@ class Case:
     # discovered from the workspace's own tables, which has been run zero times and may
     # not flip — the card says so rather than implying a lesson nobody has checked.
     probed: bool = True
+    # How deep the trap runs, one to four. Printed on the folder as TRAP ●●●○, the way the
+    # design draws it, so a player can reach for a harder case on purpose. Two is the floor
+    # for a case discovered from the workspace's own tables — nobody has measured it.
+    trap: int = 2
+    # A handwritten aside on the folder's flap, the design's "the famous one →". Empty for
+    # most cases: a note on every folder is noise.
+    note: str = ""
+    # The doubt scrawled under the first result in a child's own hand — the design's "…but
+    # every department is mashed together?!". It names what the fair query is about to
+    # check, before the cross-examination runs.
+    aside: str = ""
 
     @property
     def turns_the_verdict(self) -> bool:
@@ -81,6 +92,8 @@ class Case:
 SPREAD = Case(
     key="spread",
     title="The average",
+    trap=2,
+    aside="…but how spread out is everyone?!",
     claim="boys are better at maths",
     evidence="Two averages",
     follow_up="show the spread too, and how many are in each group",
@@ -121,6 +134,8 @@ SPREAD = Case(
 READING = Case(
     key="reading",
     title="The gap that stays",
+    trap=2,
+    aside="…and does the spread agree this time?!",
     claim="girls are better at reading",
     evidence="Two averages",
     follow_up="show the spread too, and how many are in each group",
@@ -165,6 +180,9 @@ READING = Case(
 PARADOX = Case(
     key="paradox",
     title="The paradox",
+    trap=4,
+    note="the famous one →",
+    aside="…but every department is mashed together?!",
     claim="men were more likely than women to be admitted to Berkeley in 1973",
     evidence="A pooled rate",
     follow_up="break that down by department",
@@ -209,6 +227,8 @@ PARADOX = Case(
 WINDOW = Case(
     key="window",
     title="The window",
+    trap=3,
+    aside="…but why those five years?!",
     claim="Bulgaria halved its education spending between 1991 and 1996",
     evidence="A window of years",
     follow_up="now show every year in the data, not just the 1990s",
@@ -237,6 +257,8 @@ WINDOW = Case(
 DENOMINATOR = Case(
     key="denominator",
     title="The denominator",
+    trap=3,
+    aside="…the total, or per person?!",
     claim="China is the world's biggest polluter",
     evidence="A total",
     follow_up="show it per person instead",

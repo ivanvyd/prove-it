@@ -1,10 +1,11 @@
-"""Drives the real Streamlit script through all five beats.
+"""Drives the real Streamlit script through the archive and the board.
 
 These are not unit tests of the view; they run the app the way a child does, so a
 regression that only shows up once Streamlit's rerun model is involved gets caught here
 rather than in front of a class.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -23,13 +24,11 @@ def launch() -> AppTest:
 def all_text(app: AppTest) -> str:
     """Everything the page rendered, markdown, status widgets and inline frames alike.
 
-    The frames matter and used to be invisible here. When the query moved into the
-    annotated panel — a `components.html` frame, because a copy button and a live
-    explanation strip need script that Streamlit will not run in markdown — this helper
-    stopped seeing the SQL, and the guard asserting the query is on screen while its
-    numbers are not went quietly green on a page it could no longer read. AppTest keeps
-    the frame's markup on the element, so the text is reachable; it just has to be asked
-    for.
+    The frames matter and used to be invisible here. The board is one `st.iframe`
+    document — the warrant, the sealed bag, the result strip and the second warrant are
+    all inside it — so a helper that read only markdown would see none of the case.
+    AppTest keeps the frame's markup on the element, so the text is reachable; it just has
+    to be asked for.
     """
     parts: list[str] = []
     for group in (app.markdown, app.caption, app.info, app.success, app.warning):
@@ -66,6 +65,21 @@ def click(app: AppTest, label_contains: str) -> AppTest:
     )
 
 
+def call(app: AppTest, slip: str, stake: str = "Hunch") -> AppTest:
+    """The design's three-step wager: pick a slip, stake a coin, break the seal."""
+    app = click(app, slip)
+    app = click(app, stake)
+    return click(app, "Break the seal")
+
+
+def open_own(app: AppTest) -> AppTest:
+    """Case file Nº 0: the folder has to be opened before the sheet to write on appears."""
+    return click(app, "Open case 0")
+
+
+SEALED = "Result rows inside"
+
+
 def test_the_app_starts_without_credentials_and_offers_the_docket() -> None:
     app = launch()
     assert not app.exception
@@ -74,8 +88,8 @@ def test_the_app_starts_without_credentials_and_offers_the_docket() -> None:
     assert "Offline demo" in all_text(app)
 
 
-def test_the_sealed_panel_shows_sql_but_no_numbers() -> None:
-    """Beat 2. The query is on screen; the result must not be."""
+def test_the_sealed_board_shows_sql_but_no_numbers() -> None:
+    """The query is on the warrant; the result is in the bag."""
     app = click(launch(), "The average")
     assert not app.exception
 
@@ -84,10 +98,24 @@ def test_the_sealed_panel_shows_sql_but_no_numbers() -> None:
     # asserting the unquoted form was encoding a guess about its formatting rather than a
     # requirement. What matters is that the query is on screen and the numbers are not.
     assert "AVG(" in text and "maths_score" in text, "the query Genie wrote should be visible"
-    assert "Result sealed" in text
+    assert SEALED in text and "do not open" in text
     for leaked in ("492.6", "488.1", "494.2"):
         assert leaked not in text, f"the answer ({leaked}) leaked before the child predicted"
     assert app.dataframe == [], "no result table may render while the result is sealed"
+
+
+def test_the_seal_cannot_be_broken_without_a_slip_and_a_stake() -> None:
+    """The wager is three steps, and the third is dim until the first two are on record."""
+    app = click(launch(), "The average")
+    seal = next(b for b in app.button if "Break the seal" in str(b.label))
+    assert seal.disabled, "the seal must wait for a call and a stake"
+    app = click(app, "There's a trick")
+    seal = next(b for b in app.button if "Break the seal" in str(b.label))
+    assert seal.disabled, "a slip alone is not a wager"
+    app = click(app, "Fairly sure")
+    seal = next(b for b in app.button if "Break the seal" in str(b.label))
+    assert not seal.disabled
+    assert SEALED in all_text(app), "nothing opens until the seal is broken"
 
 
 def test_returned_numbers_are_rounded_for_a_child_to_read() -> None:
@@ -135,7 +163,7 @@ def test_a_column_already_expressed_as_a_percentage_is_left_alone() -> None:
     assert for_display("8.3712", "co2_per_capita") == "8.4"
 
 
-def test_the_reasoning_steps_render_with_their_labels() -> None:
+def test_the_reasoning_cards_render_with_their_labels() -> None:
     app = click(launch(), "The average")
     text = all_text(app)
     assert "How it read the question" in text
@@ -143,32 +171,30 @@ def test_the_reasoning_steps_render_with_their_labels() -> None:
     assert "What it worked out" in text
 
 
-def test_predicting_then_revealing_shows_the_naive_verdict() -> None:
-    """Beat 3 into beat 4a: the gap looks real when only averages are on screen."""
-    app = click(launch(), "The average")
-    app = click(app, "There's a trick")
+def test_breaking_the_seal_pins_the_naive_result_to_the_board() -> None:
+    """The gap looks real when only averages are on screen."""
+    app = call(click(launch(), "The average"), "There's a trick")
     assert not app.exception
 
     text = all_text(app)
-    # The call stands, unsettled: a "trick" call at LOOKS TRUE looks lost, and the screen
+    # The call stands, unsettled: a "trick" call at LOOKS TRUE looks lost, and the desk
     # must say the cross-examination decides rather than scoring it here.
     # The apostrophe is HTML-escaped on the way out, so match around it.
-    assert "Your call" in text and "s a trick" in text
+    assert "Called: There" in text and "s a trick" in text
     assert "cross-examination decides" in text
-    # The opened seal carries the wager, so the reveal reads as a bet being settled.
-    assert "staked hunch" in text
+    assert "staked" in text
     assert "Looks true" in text
     assert "higher average" in text
-    assert len(app.dataframe) == 1, "the v1 result should now be shown"
+    assert "492.6" in text, "the v1 rows are on the strip now"
+    assert "query v1" in text
 
 
 def test_a_holds_up_call_is_settled_only_at_the_retrial() -> None:
     """LOOKS TRUE appears to vindicate "it holds up"; the fairer query takes it away.
     Nothing may pay out or be lost before that."""
-    app = click(launch(), "The average")
-    app = click(app, "It holds up")
+    app = call(click(launch(), "The average"), "It holds up")
     text = all_text(app)
-    assert "Your call" in text and "It holds up" in text
+    assert "Called: It holds up" in text
     assert "Missed" not in text and "Called it" not in text, "nothing settles at the reveal"
 
     app = click(app, "show the spread")
@@ -178,10 +204,9 @@ def test_a_holds_up_call_is_settled_only_at_the_retrial() -> None:
     assert "Verdict overturned" in text
 
 
-def test_the_repair_overturns_the_verdict_and_shows_the_diff() -> None:
-    """Beat 4b — the moment the whole product exists for."""
-    app = click(launch(), "The average")
-    app = click(app, "There's a trick")
+def test_the_repair_overturns_the_verdict_and_pins_the_second_warrant() -> None:
+    """The moment the whole product exists for."""
+    app = call(click(launch(), "The average"), "There's a trick")
     app = click(app, "show the spread")
     assert not app.exception
 
@@ -189,32 +214,30 @@ def test_the_repair_overturns_the_verdict_and_shows_the_diff() -> None:
     assert "Busted" in text
     assert "STDDEV" in text, "the repaired query must be visible"
     assert "overlap" in text
-    assert "the answer changed" in text, "the lesson callout should fire"
-    assert len(app.dataframe) == 2, "both results should be on screen for comparison"
+    assert "the answer changed" in text, "the lesson line should fire"
+    assert "Warrant N&ordm; 2" in text, "the second warrant fills the reserved space"
+    assert "Overturned" in text, "the stamp should land when the verdict really flipped"
 
 
 def test_the_retrial_names_what_each_added_column_revealed() -> None:
-    """Beat 4 should say what changed, not just show two panels side by side."""
-    app = click(launch(), "The average")
-    app = click(app, "There's a trick")
+    """The retrial should say what changed, not just show two warrants side by side."""
+    app = call(click(launch(), "The average"), "There's a trick")
     app = click(app, "show the spread")
     assert not app.exception
 
     text = all_text(app)
-    assert "The first verdict" in text
-    assert "The retrial" in text
+    assert "Search warrant" in text
+    assert "Warrant N&ordm; 2" in text
     # Narration quoted off the returned rows, not invented.
     assert "How many are in each group" in text
     assert "Almost everyone is in the same range" in text
-    assert "Overturned" in text, "the stamp should fire when the verdict really flipped"
 
 
 def test_the_stamp_does_not_fire_when_the_verdict_did_not_flip() -> None:
     """The theatre must never outrun the arithmetic."""
     from prove_it.domain.verdict import Verdict
 
-    app = click(launch(), "The average")
-    app = click(app, "There's a trick")
+    app = call(click(launch(), "The average"), "There's a trick")
     app = click(app, "show the spread")
 
     inv = app.session_state["investigation"]
@@ -223,12 +246,11 @@ def test_the_stamp_does_not_fire_when_the_verdict_did_not_flip() -> None:
     assert inv.second_analysis.verdict is Verdict.BUSTED
 
 
-def test_the_receipt_reports_that_the_app_wrote_no_sql() -> None:
-    """Beat 5. This line is the twenty-point criterion, printed."""
-    app = click(launch(), "The average")
-    app = click(app, "There's a trick")
+def test_closing_the_case_prints_the_receipt_that_says_the_app_wrote_no_sql() -> None:
+    """This line is the twenty-point criterion, printed."""
+    app = call(click(launch(), "The average"), "There's a trick")
     app = click(app, "show the spread")
-    app = click(app, "Print my receipt")
+    app = click(app, "Close the case")
     assert not app.exception
 
     text = all_text(app)
@@ -243,60 +265,75 @@ def test_the_receipt_reports_that_the_app_wrote_no_sql() -> None:
     assert "500 pts" in text
     assert "Evidence Clerk" in text
     assert "to Field Investigator" in text
+    # The antibody card is minted over the board.
+    assert "Antibody N&ordm; 01" in text
     # The share strip is an st.code block, which all_text does not reach.
     strip = "\n".join(str(c.value) for c in app.code)
     assert "●" in strip and "✓" in strip
     assert "boys" not in strip, "the strip must not name the claim"
 
 
+def test_the_case_card_can_be_shared_and_pinned() -> None:
+    app = call(click(launch(), "The average"), "There's a trick")
+    app = click(app, "show the spread")
+    app = click(app, "Close the case")
+    app = click(app, "Share the case card")
+    text = all_text(app)
+    assert "the only thing that leaves the room" in text
+    assert "0 by the app" in text
+    app = click(app, "Back to the card")
+    app = click(app, "Pin it to the kit")
+    assert "Antibody N&ordm; 01" not in all_text(app), "pinning puts the card away"
+
+
 def test_a_finished_investigation_can_be_restarted() -> None:
     case = case_for("paradox")
     assert case is not None
-    app = click(launch(), case.title)
-    app = click(app, "There's a trick")
+    app = call(click(launch(), case.title), "There's a trick")
     # The case's own label, not a hardcoded one: each case argues for a different repair,
     # and this test opened the paradox while still clicking the spread case's button.
     app = click(app, case.repair_label)
-    app = click(app, "Print my receipt")
-    app = click(app, "Check another claim")
+    app = click(app, "Close the case")
+    app = click(app, "Return to the archive")
 
     assert not app.exception
-    assert "Rumours on the desk" in all_text(app), "the docket should be the screen showing"
+    assert "rumours on the desk" in all_text(app), "the archive should be the screen showing"
+    assert "Closed &middot; Busted" in all_text(app), "the folder is stamped with its verdict"
 
 
 def test_typing_a_claim_does_not_submit_it_until_the_button_is_pressed() -> None:
     """A bare text_input would fire a Genie call at whatever had been typed so far."""
-    app = launch()
+    app = open_own(launch())
     app.text_input[0].input("boys are bett").run()
 
     assert not app.exception
-    assert "Result sealed" not in all_text(app), "the claim was sent before it was submitted"
-    assert "Rumours on the desk" in all_text(app), "the docket should be the screen showing"
+    assert SEALED not in all_text(app), "the claim was sent before it was submitted"
+    assert "rumours on the desk" in all_text(app), "the archive should be the screen showing"
 
 
 def test_a_typed_claim_is_sent_when_submitted() -> None:
-    app = launch()
+    app = open_own(launch())
     app = app.text_input[0].input("boys are better at maths").run()
     app = click(app, "Test it")
 
     assert not app.exception
-    assert "Result sealed" in all_text(app)
+    assert SEALED in all_text(app)
 
 
 def test_submitting_an_empty_claim_does_nothing() -> None:
-    app = launch()
+    app = open_own(launch())
     app = click(app, "Test it")
 
     assert not app.exception
-    assert "Result sealed" not in all_text(app)
+    assert SEALED not in all_text(app)
 
 
 @pytest.mark.parametrize("case", DOCKET, ids=lambda c: c.key)
-def test_every_case_on_the_docket_reaches_the_sealed_panel(case) -> None:
+def test_every_case_on_the_docket_reaches_the_sealed_board(case) -> None:
     """The offline script is claim-agnostic, so no case may dead-end."""
     app = click(launch(), case.title)
     assert not app.exception
-    assert "Result sealed" in all_text(app)
+    assert SEALED in all_text(app)
 
 
 # The estimate, end to end ----------------------------------------------------------
@@ -306,64 +343,62 @@ def test_a_close_estimate_pays_on_the_chit_and_the_run() -> None:
     """Drives the real script: mark the gap, call it, cross-examine, read the payout.
 
     Verified in a browser first — the reading case's real gap is 21.8, a mark of 22.0
-    scores "Dead on", and the chit reads
-    `Called it × hunch +100 · Case closed +150 · Dead on +150 = +400`. This pins that.
+    scores "Dead on", and the chits read +100 Called it · +150 Case closed · +150 Dead
+    on. This pins that.
     """
     case = case_for("reading")
     assert case is not None and case.estimate is not None
 
     app = click(launch(), case.title)
     mark(app, 22.0)
-    app = click(app, "It holds up")
+    app = call(app, "It holds up")
 
-    # The mark against the truth belongs to the REVEAL, where the rows have just landed
-    # and the comparison is the news. By the retrial it has said what it had to say, and
-    # the payout chit carries it from there.
+    # The mark against the truth belongs to the review, where the rows have just landed
+    # and the comparison is the news.
     revealed = all_text(app)
     assert "You said" in revealed and "22.0" in revealed and "21.8" in revealed
     assert "Dead on" in revealed
 
     app = click(app, case.repair_label)
-    assert "Dead on +150" in all_text(app), "the chit carries it forward"
+    assert "+150 Dead on" in all_text(app), "the chit carries it forward"
     run = app.session_state["run"]
     assert run.points == 400, f"expected 100 + 150 + 150, got {run.points}"
 
 
-def test_a_wide_estimate_costs_nothing_and_prints_no_line_on_the_chit() -> None:
-    """A nil estimate line on the payout would read as a fine for having tried."""
+def test_a_wide_estimate_costs_nothing_and_prints_no_chit() -> None:
+    """A nil estimate chit would read as a fine for having tried."""
     case = case_for("reading")
     assert case is not None
 
     app = click(launch(), case.title)
     mark(app, 39.0)
-    app = click(app, "It holds up")
-    assert "Wide of it" in all_text(app), "the reveal still shows the player where they were"
+    app = call(app, "It holds up")
+    assert "Wide of it" in all_text(app), "the review still shows the player where they were"
 
     app = click(app, case.repair_label)
     text = all_text(app)
     run = app.session_state["run"]
     assert run.points == 250, "a wide mark must neither pay nor deduct"
-    payout = [line for line in text.split("\n") if "Called it" in line]
-    assert payout and "Wide of it" not in payout[0], "no nil line belongs on the chit"
+    chits = re.findall(r'class="pi-chit">([^<]*)<', text)
+    assert any("Called it" in c for c in chits)
+    assert not any("Wide of it" in c for c in chits), "no nil chit belongs on the desk"
 
 
-def test_every_folder_in_the_drawer_sits_at_its_own_angle() -> None:
-    """Five folders, five different tilts — the thing that makes the docket read as objects.
-
-    The angle used to come from `:nth-of-type` on the Streamlit column. A browser
-    measurement showed why that was wrong: each docket row is its own columns container, so
-    the count restarts at every row and all five folders drew at one of two angles. The
-    class is emitted per case now, and this asserts the five are distinct rather than merely
-    present — a regression that gave every card the same tilt would otherwise pass.
-
-    Matched on the class PAIR as the card emits it. Searching for `pi-tilt-N` alone found
-    all five in every case, because `all_text` also returns the injected stylesheet and the
-    stylesheet names all five selectors. The first version of this test passed against code
-    that hardcoded a single tilt.
-    """
+def test_every_folder_in_the_drawer_lies_at_its_own_angle() -> None:
+    """Five folders, five different tilts — the thing that makes the docket read as
+    objects on a desk rather than a grid of cards. The angle rides on the folder as an
+    inline custom property, one per case."""
     text = all_text(launch())
-    tilts = {n for n in range(5) if f"pi-folder pi-tilt-{n}" in text}
+    tilts = set(
+        re.findall(r'class="pi-folder pi-folder--(?:case|next)" style="--rot:(-?[\d.]+)deg"', text)
+    )
     assert len(tilts) == min(5, len(DOCKET)), f"expected a distinct tilt per case, got {tilts}"
+
+
+def test_the_first_open_case_is_marked_up_next_and_a_called_one_is_stamped() -> None:
+    text = all_text(launch())
+    assert text.count("Up next") == 1, "exactly one folder is up next"
+    assert "Closed &middot;" not in text, "nothing is stamped before anything is called"
 
 
 def test_a_case_that_asks_for_no_estimate_still_plays() -> None:
@@ -372,8 +407,7 @@ def test_a_case_that_asks_for_no_estimate_still_plays() -> None:
     case = case_for("window")
     assert case is not None and case.estimate is None
 
-    app = click(launch(), case.title)
-    app = click(app, "There's a trick")
+    app = call(click(launch(), case.title), "There's a trick")
     app = click(app, case.repair_label)
     assert not app.exception
     assert "You said" not in all_text(app), "a case that did not ask must not report a mark"

@@ -24,15 +24,20 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from prove_it.genie.models import ThoughtStep, Turn
-from prove_it.ui.render import render_thoughts
+from prove_it.ui.board import thought_cards
 
 APP = str(Path(__file__).resolve().parents[1] / "src" / "prove_it" / "ui" / "app.py")
 
 
 def all_text(app: AppTest) -> str:
+    """Markdown, status widgets and the inline frames — the board is one of the latter."""
     parts: list[str] = []
     for group in (app.markdown, app.caption, app.info, app.success, app.warning):
         parts += [str(element.value) for element in group]
+    for element in app._tree.get("iframe") or []:
+        srcdoc = getattr(getattr(element, "proto", None), "srcdoc", "")
+        if srcdoc:
+            parts.append(srcdoc)
     return "\n".join(parts)
 
 
@@ -73,23 +78,32 @@ def test_a_deck_card_drives_the_whole_flow_with_free_text_off(deck_only: None) -
     app = card.click().run()
     assert not app.exception
 
-    calls = [b for b in app.button if "trick" in str(b.label).lower()]
-    assert calls, f"no call offered; buttons: {[b.label for b in app.button]}"
-    app = calls[0].click().run()
-    assert not app.exception
+    # The design's wager: a slip, a coin, then the seal.
+    for label in ("trick", "hunch", "break the seal"):
+        button = next((b for b in app.button if label in str(b.label).lower()), None)
+        assert button, f"no {label!r} control; buttons: {[b.label for b in app.button]}"
+        app = button.click().run()
+        assert not app.exception
 
-    # The rows land in an st.dataframe, which all_text() does not reach — the verdict and
-    # the standing call are the markdown proof that the fallback got to the end.
+    # The rows are pinned to the board, which is one inline frame — all_text reaches it.
     text = all_text(app)
     assert "Looks true" in text or "Busted" in text, f"no verdict reached: {text[-400:]}"
-    assert "Your call" in text
+    assert "Called:" in text
     assert app.session_state["investigation"].first_result is not None
 
 
 def test_the_flag_on_restores_the_text_box(free_text: None) -> None:
-    """Guards the fixture itself: without it the first test proves nothing."""
+    """Guards the fixture itself: without it the first test proves nothing. The sheet to
+    write on is inside case file Nº 0, so the folder has to be opened first."""
     app = AppTest.from_file(APP, default_timeout=30).run()
+    own = next(b for b in app.button if "open case 0" in str(b.label).lower())
+    app = own.click().run()
     assert len(app.text_input) == 1
+
+
+def test_the_flag_off_removes_case_file_zero(deck_only: None) -> None:
+    app = AppTest.from_file(APP, default_timeout=30).run()
+    assert not any("open case 0" in str(b.label).lower() for b in app.button)
 
 
 def test_the_flag_defaults_to_on() -> None:
@@ -104,7 +118,12 @@ def test_the_flag_defaults_to_on() -> None:
 
 
 def _thoughts_on_screen(app: AppTest) -> list[str]:
-    return [str(m.value) for m in app.markdown if "pi-step" in str(m.value)]
+    """The reasoning cards live on the board, which is one inline frame."""
+    return [
+        getattr(getattr(e, "proto", None), "srcdoc", "")
+        for e in (app._tree.get("iframe") or [])
+        if 'id="er-reason"' in getattr(getattr(e, "proto", None), "srcdoc", "")
+    ]
 
 
 def test_the_reasoning_panel_renders_every_thought_in_order() -> None:
@@ -188,21 +207,33 @@ def _turn(
 
 def test_no_thoughts_falls_back_to_the_description_rather_than_an_empty_box() -> None:
     """The probe says thoughts come back 14/14 on Free Edition, but that is one space on
-    one day. If it ever changes, the panel must not become an empty titled frame."""
-    render_thoughts(_turn(sql="SELECT 1", description="Compared the two averages."))
+    one day. If it ever changes, the column must not become an empty frame."""
+    cards = thought_cards(_turn(sql="SELECT 1", description="Compared the two averages."), None)
+    assert "Compared the two averages." in cards
+    assert "What Genie understood" in cards
 
 
-def test_neither_thoughts_nor_description_still_renders() -> None:
-    render_thoughts(_turn(sql="SELECT 1"))
+def test_neither_thoughts_nor_description_still_renders_a_card() -> None:
+    cards = thought_cards(_turn(sql="SELECT 1"), None)
+    assert "did not explain" in cards
+
+
+def test_the_table_is_the_last_card_and_typed() -> None:
+    """The design's WHERE IT LOOKED card: the table name, in the typewriter face."""
+    cards = thought_cards(_turn(sql="SELECT 1", description="d"), "workspace.prove_it.t")
+    assert cards.endswith("workspace.prove_it.t</div></div>")
+    assert 'class="b typed"' in cards
 
 
 def test_a_thought_cannot_inject_markup() -> None:
-    """Step text is Genie's, rendered into a markdown block with HTML enabled."""
+    """Step text is Genie's, rendered into a document with HTML enabled."""
     hostile = _turn(
         sql="SELECT 1",
         thoughts=[ThoughtStep(kind="STEPS", content="<img src=x onerror=alert(1)>")],
     )
-    render_thoughts(hostile)
+    cards = thought_cards(hostile, None)
+    assert "<img" not in cards
+    assert "&lt;img" in cards
 
 
 def test_an_unknown_thought_type_is_still_shown() -> None:
