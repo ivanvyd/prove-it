@@ -23,7 +23,7 @@ often flips.
 
 **Links.** Code: [github.com/ivanvyd/prove-it](https://github.com/ivanvyd/prove-it). Play it
 with no account: [prove-it.streamlit.app](https://prove-it.streamlit.app). Demo video:
-**[VIDEO URL]**. The Databricks App itself
+**<https://www.youtube.com/watch?v=Q47GrG9Gihk>**. The Databricks App itself
 runs at [prove-it-7474649736342788.aws.databricksapps.com](https://prove-it-7474649736342788.aws.databricksapps.com)
 and needs a workspace identity to open.
 
