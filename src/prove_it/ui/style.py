@@ -75,9 +75,9 @@ PALETTE = {
     "desk-top": "#4A3421",
     "desk-mid": "#3D2A1A",
     "desk-deep": "#2E1F12",
+    # The board's own lamps read these as {{tokens}}; the archive lamp bakes the same
+    # colours into its SVG below, which cannot read custom properties.
     "cord": "#2A313A",
-    "cord-lit": "#4A5058",
-    "shade": "#3A4048",
     "shade-deep": "#23262B",
     "bulb": "#FFF3D0",
     "bulb-warm": "#F2C877",
@@ -322,8 +322,9 @@ _CSS = """
    the block container, and its `stVerticalBlock` carries `z-index:1`: a stacking context
    that traps a `z-index:-1` child inside it, so a room drawn as an element painted OVER the
    corkboard it was meant to sit behind. A background paints behind everything by
-   construction. Topmost first: vignette, bulb, glow, shade, cord, cone, desk lip, desk
-   grain, desk, two cabinets, wall. */
+   construction. Topmost first: vignette, the lamp (one drawn SVG — mount, cord, shade
+   and bulb together, because four separate gradients read as parts, not a pendant),
+   cone, desk lip, desk grain, desk, two cabinets, wall. */
 .stApp {
   background-color:var(--room);
   background-image:
