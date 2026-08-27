@@ -420,6 +420,21 @@ You should not have to trust that the seal is real rather than a `display:none` 
 number already in the page. So the sealed screen prints the evidence tag: Genie's attachment
 handle, the thing the app is holding and declining to spend. It is a picture of a fact.
 
+## What you can ask it
+
+Two things, both in plain English, and both reach Genie word for word.
+
+**A claim.** Each docket case sends its rumour to Genie as a question — *are boys better at
+maths?* — and case Nº 0 takes yours: type any rumour you have heard and the app asks Genie
+whether the four tables can test it. Most typed claims end in "can't tell from this data",
+scored as a win, with Genie naming the column it would have needed.
+
+**The cross-examination.** After the reveal, the follow-up box comes pre-filled with the
+wording that lands the trick — *break that down by department*, *show the spread too, and
+how many are in each group* — and it is editable. Your words go into the same Genie
+conversation, and Genie rewrites its own query from them. The app turns neither ask into
+SQL: the question is yours, the query is Genie's.
+
 ## What Genie does here
 
 Each of these is a Genie capability the app depends on, and the app would not work without
