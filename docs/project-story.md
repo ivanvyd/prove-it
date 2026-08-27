@@ -283,16 +283,16 @@ measured in a real browser across all five screens rather than assumed.
 Eight colour pairs sat below the WCAG AA floor. The caption telling a visitor the demo is a
 recording measured 2.97:1. The sealed evidence bag's own labels measured 3.32:1. Streamlit's
 stock info box measured 2.05:1, and it carried the sentence this whole product exists to
-deliver. All are above the floor now, and a test computes all twenty-one pairs so a future
-repaint cannot quietly undo it.
+deliver. All are above the floor now, and a test computes all fifty-five pairs so a future
+repaint cannot undo it unnoticed.
 
 The rest followed the same rule of measuring first. Every explainable part of a query is
 reachable by keyboard and announces its note through a polite live region. The redacted
 digits on the sealed bag are hidden from assistive technology, because a listener gains
 nothing from "black-square black-square" and the label beside them already says the result
 is sealed. The page has a real top-level heading, which it did not before. The stake
-control's own dot was thirteen pixels; its row is thirty-four now, because a child choosing
-a stake on a tablet should not be able to mis-tap their own bet. Every animation stops under
+control's own dot was thirteen pixels; the stakes are 66-pixel coins now, because a child
+choosing a stake on a tablet should not be able to mis-tap their own bet. Every animation stops under
 `prefers-reduced-motion`.
 
 ## Making you place the number
