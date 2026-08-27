@@ -197,7 +197,12 @@ def thought_cards(turn: Turn | None, table: str | None) -> str:
                 cards.append((step.label, step.content, False))
         elif turn.description:
             cards.append(("What Genie understood", turn.description, False))
-    if table:
+    # The table, as the design's typed WHERE IT LOOKED card — but only when Genie did not
+    # already say where it looked. The recorded fixture includes a data-sourcing step
+    # labelled "Where it looked", and appending the table under the same label put two
+    # identical headings on the board, one over the full path and one over the bare name.
+    already_sourced = any(label.strip().lower() == "where it looked" for label, _, _ in cards)
+    if table and not already_sourced:
         cards.append(("Where it looked", table, True))
     if not cards:
         cards.append(("What Genie said", "Genie did not explain its working for this one.", False))

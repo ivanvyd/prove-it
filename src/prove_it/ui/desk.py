@@ -225,9 +225,18 @@ DESK_CSS = """
 [class*="st-key-panel-"] { position:relative; background:rgba(20,16,10,.55);
   border:1px solid rgba(201,179,126,.35); border-radius:6px; padding:18px clamp(14px,2vw,22px);
   width:100%; }
-[class*="st-key-panel-"] [data-testid="stHorizontalBlock"] { gap:14px 18px !important;
-  align-items:center; flex-wrap:wrap !important; }
+/* The three columns — slips, stake, seal — centred against each other, and each one's own
+   contents centred, so nothing floats out of line when they sit side by side or when the
+   panel narrows and they stack. */
+[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] { gap:16px 20px !important;
+  align-items:center !important; flex-wrap:wrap !important; }
+[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+  display:flex; flex-direction:column; align-items:center; }
 [class*="st-key-panel-"] [data-testid="stVerticalBlock"] { gap:7px !important; }
+/* The slips column carries the estimate too, so it keeps its full width; the stake and
+   seal columns hug their content and sit centred. */
+[class*="st-key-panel-"] > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child {
+  align-items:stretch; }
 .pi-wager-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px 16px;
   flex-wrap:wrap; margin-bottom:8px; }
 .pi-wager-title { font-family:var(--f-type); font-size:15px; letter-spacing:.16em;
@@ -250,34 +259,79 @@ DESK_CSS = """
   box-shadow:0 0 0 2.5px var(--red), 0 4px 10px rgba(0,0,0,.4) !important; }
 [class*="st-key-slip-"][class*="-on"] .stButton > button::after { content:""; position:absolute; left:14px;
   top:50%; margin-top:-3px; width:6px; height:6px; border-radius:50%; background:var(--red); }
-/* The stake: three coins. */
+/* The stake: physical coin stacks. Hunch is one coin, fairly-sure two, certain three, so
+   how much you are risking is legible before you read the label — the stack you push in.
+   Each coin is a struck disc (radial gold face, raised rim, top glint, under-shade); the
+   coins beneath show as edge bands from layered box-shadows. The tops align, so the stack
+   grows downward and a taller stack reads as more money. */
 .pi-stake-label { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--gold); text-align:center; }
+  color:var(--gold); text-align:center; margin:8px 0 12px; }
 .pi-stake-note { font-family:var(--f-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--ash); text-align:center; max-width:260px; line-height:1.7; margin:4px auto 0; }
-[class*="st-key-coins"] [data-testid="stHorizontalBlock"] { gap:10px !important; justify-content:center;
-  flex-wrap:nowrap !important; }
-[class*="st-key-coins"] [data-testid="stColumn"] { flex:0 0 auto !important; width:auto !important;
-  min-width:0 !important; }
-[class*="st-key-coin-"] .stButton > button { width:68px; height:68px; min-height:68px; border-radius:50%;
-  padding:0; border:2.5px solid var(--gold); color:var(--gold-pale);
-  background:radial-gradient(circle at 40% 32%, rgba(201,179,126,.28), rgba(201,179,126,.08));
-  font-size:9.5px; letter-spacing:.06em; line-height:1.35; white-space:normal; }
+  color:var(--ash); text-align:center; max-width:260px; line-height:1.7; margin:12px auto 0; }
+/* The row of coins: always a tight, top-aligned, centred group. Streamlit wraps each coin
+   in a layout wrapper set to `flex:1 1 128px`, which grows to fill and pushes the coins to
+   the edges — so the wrapper is shrunk to its content here, and the row centres what is
+   left. Both the wrapper and the coin block are pinned, because either one growing spreads
+   the group. */
+[class*="st-key-coins"] { justify-content:center !important; align-items:flex-start !important;
+  gap:14px !important; flex-wrap:nowrap !important; }
+[class*="st-key-coins"] > [data-testid="stLayoutWrapper"],
+[class*="st-key-coins"] [class*="st-key-coin-"] {
+  flex:0 0 auto !important; width:auto !important; min-width:0 !important; }
+[class*="st-key-coin-"] .stButton, [class*="st-key-coin-"] .stButton > button { width:66px; }
+[class*="st-key-coin-"] .stButton > button {
+  position:relative; height:66px; min-height:66px; border-radius:50%; padding:0; border:none;
+  overflow:visible; color:var(--coin-ink); font-family:var(--f-mono); font-weight:600;
+  font-size:9px; letter-spacing:.03em; line-height:1.2; white-space:normal; text-transform:uppercase;
+  background:radial-gradient(circle at 38% 30%, var(--coin-hi), var(--coin) 46%,
+    var(--coin-mid) 74%, var(--coin-rim));
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 7px rgba(120,90,30,.5),
+    0 3px 0 -1px var(--coin-edge), 0 5px 6px rgba(0,0,0,.5);
+  transition:transform .12s ease; }
+/* The raised rim ring. */
+[class*="st-key-coin-"] .stButton > button::before { content:""; position:absolute; inset:5px;
+  border-radius:50%; border:1.5px solid rgba(120,90,30,.35); pointer-events:none; }
 [class*="st-key-coin-"] .stButton > button p { margin:0; }
-[class*="st-key-coin-"] .stButton > button strong { display:block; font-size:16px; font-weight:700; }
-[class*="st-key-coin-HUNCH"] .stButton > button { transform:rotate(-4deg); }
-[class*="st-key-coin-FAIRLY"] .stButton > button { transform:rotate(2deg); font-size:9px; letter-spacing:.04em; }
-[class*="st-key-coin-CERTAIN"] .stButton > button { transform:rotate(6deg); border-color:var(--certain);
-  color:var(--certain-ink); background:radial-gradient(circle at 40% 32%, rgba(212,106,94,.3), rgba(212,106,94,.08)); }
-[class*="st-key-coin-"] .stButton > button:hover { color:inherit; background:radial-gradient(circle at 40% 32%,
-  rgba(201,179,126,.4), rgba(201,179,126,.14)); }
-[class*="st-key-coin-"][class*="-on"] .stButton > button { box-shadow:0 0 0 6px transparent,
-  0 0 0 8.5px var(--gold-lit) !important; }
-[class*="st-key-coin-CERTAIN"][class*="-on"] .stButton > button { box-shadow:0 0 0 6px transparent,
-  0 0 0 8.5px var(--pin-red) !important; }
-/* The wax seal. */
+[class*="st-key-coin-"] .stButton > button strong { display:block; font-size:15px; font-weight:800; margin-top:1px; }
+/* Two coins: an edge, a coin face, an edge — and room below for the stack. */
+[class*="st-key-coin-FAIRLY"] .stButton > button {
+  box-shadow:inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 7px rgba(120,90,30,.5),
+    0 3px 0 -1px var(--coin-edge), 0 6px 0 -1px var(--coin), 0 9px 0 -1px var(--coin-edge),
+    0 11px 6px rgba(0,0,0,.5);
+  margin-bottom:8px; }
+/* Three coins, struck in copper so the riskiest stake reads as different metal, not just
+   taller. Dark ink on copper measured 5.6:1. */
+[class*="st-key-coin-CERTAIN"] .stButton > button { color:var(--copper-ink);
+  background:radial-gradient(circle at 38% 30%, var(--copper-hi), var(--copper) 50%, var(--copper-edge));
+  box-shadow:inset 0 2px 3px rgba(255,235,220,.5), inset 0 -4px 7px rgba(110,50,30,.5),
+    0 3px 0 -1px var(--copper-edge), 0 6px 0 -1px var(--copper), 0 9px 0 -1px var(--copper-edge),
+    0 12px 0 -1px var(--copper), 0 15px 0 -1px var(--copper-edge), 0 17px 6px rgba(0,0,0,.5);
+  margin-bottom:14px; }
+[class*="st-key-coin-CERTAIN"] .stButton > button::before { border-color:rgba(110,50,30,.4); }
+[class*="st-key-coin-"] .stButton > button:hover { transform:translateY(-2px); color:var(--coin-ink); }
+[class*="st-key-coin-CERTAIN"] .stButton > button:hover { color:var(--copper-ink); }
+/* Selected: an outline rather than a box-shadow, so it does not clobber the coin stack. */
+[class*="st-key-coin-"][class*="-on"] .stButton > button { outline:3px solid var(--gold-lit);
+  outline-offset:3px; }
+[class*="st-key-coin-CERTAIN"][class*="-on"] .stButton > button { outline-color:var(--pin-red); }
+[class*="st-key-coin-"] .stButton > button:focus-visible { outline:3px solid var(--gold-lit);
+  outline-offset:3px; }
+/* The wager is a single centred vertical flow: slips, estimate, stake coins, seal. Capped
+   and centred so the slips do not run the full width of a desktop desk, and everything
+   below them lines up on the same centre line. */
+[class*="st-key-panel-wager"] > [data-testid="stVerticalBlock"] {
+  max-width:520px; margin:0 auto; align-items:center; }
+[class*="st-key-panel-wager"] [class*="st-key-slip-"] { width:100%; }
+[class*="st-key-panel-wager"] .stElementContainer:has(> .pi-stake-label),
+[class*="st-key-panel-wager"] .stElementContainer:has(> .pi-stake-note),
+[class*="st-key-panel-wager"] .stElementContainer:has(> .pi-seal-hint) { width:100%; }
+
+/* The wax seal, centred in the flow. Full width with centred items, because the panel's
+   column flex otherwise shrinks the seal's container to the button and parks it left. */
+[class*="st-key-seal"] { width:100% !important; align-items:center !important; }
+[class*="st-key-seal"] .stButton { display:flex; justify-content:center; width:100%; }
 [class*="st-key-seal"] .stButton > button { width:104px; height:104px; min-height:104px; border-radius:50%;
-  margin:0 auto; display:flex; padding:0; border:0; color:var(--wax-ink);
+  margin:14px auto 0; display:flex; padding:0; border:0; color:var(--wax-ink);
   font-family:var(--f-type) !important; font-size:12px; letter-spacing:.12em; line-height:1.6;
   white-space:normal; text-align:center;
   background:radial-gradient(circle at 38% 30%, var(--red-lit), var(--wax) 62%, var(--wax-deep));

@@ -183,6 +183,20 @@ PALETTE = {
     "wax-ink": "#F5E9E2",
     "certain": "#D46A5E",
     "certain-ink": "#F0B9B0",
+    # The stake coins, struck as gold and copper. The label is embossed in dark ink — it
+    # measured 7.7:1 on the gold face and 5.6:1 on the copper, where the pale label the
+    # coins carried before was 1.6:1 and unreadable. Hunch is one coin, fairly-sure two,
+    # certain three, the stack drawn in edge bands beneath the top face.
+    "coin-hi": "#F4E4AE",
+    "coin": "#DFC271",
+    "coin-mid": "#C4A24C",
+    "coin-rim": "#A6822F",
+    "coin-edge": "#8A6C2E",
+    "coin-ink": "#3A2E12",
+    "copper-hi": "#E8A87C",
+    "copper": "#D98A5E",
+    "copper-edge": "#8E4A28",
+    "copper-ink": "#3A1E12",
     "green": "#3C6E4B",
     "green-deep": "#2E5D3A",
     "green-mark": "#DCE9D8",

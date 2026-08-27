@@ -252,7 +252,12 @@ ARCHIVE_CSS = """
    give six slivers at any width — so the row is made to. */
 [data-testid="stHorizontalBlock"]:has(.pi-folder) {
   position:relative; z-index:1; flex-wrap:wrap !important; justify-content:center;
-  align-items:flex-end; gap:clamp(18px,2.2vw,30px) !important;
+  align-items:flex-end;
+  /* Row gap larger than the column gap: a folder's tab sticks up 16px and its tilt adds a
+     few more at the corners, so wrapped rows need more vertical clearance than horizontal
+     or the lower row's tab pokes into the folder above — visible on a tablet, where the
+     five folders wrap to two or three rows. */
+  gap:46px clamp(16px,2.2vw,30px) !important;
   padding:clamp(40px,6vh,70px) 12px clamp(20px,5vh,54px); }
 /* The push to the bottom goes on the wrapper Streamlit puts around the row, because that
    wrapper — not the row — is the flex child of the scene. On the row it did nothing, and
