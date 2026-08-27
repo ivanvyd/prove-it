@@ -15,6 +15,7 @@ often flips.
 | Who it is for | Children aged 10 to 14 in a classroom, one screen, no pupil accounts. [More](#who-it-is-for) |
 | Architecture | Streamlit on Databricks Apps, the Genie Conversation API, one Genie space over four Unity Catalog tables. [More](#architecture) |
 | What Genie does | Writes every query, explains its reasoning, holds the rows behind a handle, and rewrites the query mid-conversation. [More](#what-genie-does-here) |
+| What you can ask | A docket claim, any rumour you type, and a cross-examination in your own words. [More](#what-you-can-ask-it) |
 | How you can check | The build fails on any SQL literal in app code, and both turns of a case carry the same Genie conversation id. [More](#how-genie-powers-it-and-how-you-can-check) |
 | Reading the query | Every part of Genie's SQL explains itself on hover or focus, and refuses to summarise what it cannot read honestly. [More](#making-the-query-readable-not-merely-visible) |
 | Accessibility | Measured against WCAG 2.2 AA in a browser: contrast, keyboard, screen reader, target size, reduced motion. [More](#built-to-be-used-by-everyone) |
