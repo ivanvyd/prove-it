@@ -461,6 +461,16 @@ def render_board(
   window.addEventListener('resize', settle);
   settle(); setTimeout(settle, 120); setTimeout(settle, 900);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+  // The timers above miss anything that grows LATE — a webfont that swaps in after the
+  // last settle made the reason column taller than the height already solved for, and
+  // the cards were cut. Watch the pinned items themselves: any size change re-solves.
+  // No feedback loop: fit() changes the frame's height, which changes none of these
+  // items' own sizes.
+  if (window.ResizeObserver) {{
+    var ro = new ResizeObserver(settle);
+    ['er-claim', 'er-reason', 'er-warrant', 'er-bag', 'er-strip', 'er-conv',
+     'er-retrial'].forEach(function (id) {{ var e = el(id); if (e) ro.observe(e); }});
+  }}
   setTimeout(function () {{ var c = el('er-cone-a'); if (c) c.style.opacity = '1'; }}, 250);
   setTimeout(function () {{ var c = el('er-cone-b'); if (c) c.style.opacity = '1'; }}, 650);
 
