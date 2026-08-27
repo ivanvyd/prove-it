@@ -11,9 +11,9 @@ would *test* the claim, shows only that query and Genie's reasoning, and makes y
 appears. Then one follow-up in plain English — *"break that down by department"* — Genie
 rewrites its own query in the same conversation, and the verdict often changes.
 
-![The sealed screen: Genie's query on a ruled sheet, its reasoning beside it, and the result
-in a kraft evidence bag banded SEALED — DO NOT OPEN UNTIL A CALL IS
-IN.](docs/screenshots/01-sealed.png)
+![The sealed board: the claim clipping, Genie's reasoning on index cards, the SEARCH
+WARRANT carrying its query, and the result in a kraft evidence bag banded SEALED — DO NOT
+OPEN.](docs/screenshots/02-sealed.png)
 
 *Genie has written the query and returned a handle for the rows. The app is holding that
 handle and declining to spend it — the tag on the bag is the real attachment id.*
@@ -98,10 +98,6 @@ It lands the lesson before anyone argues for it. A player who believes *boys are
 maths* puts the gap around 18 points and reads back:
 
 > You said **18.0 points** · it is **4.5 points** — Wide of it
-
-![The estimate ruler at the reveal: a red mark labelled "the data" near the left, the
-player's ring far to the right of it, and the line "You said 18.0 points · it is 4.5 points —
-Wide of it".](docs/screenshots/04-explaining-the-gap.png)
 
 That is the same intuition the truncated-axis chart exploits two beats later, caught in the
 player's own hand first.
@@ -300,9 +296,9 @@ the five curated cases, and every one of them names a table you do not have.
 
 ## The argument, in one screen
 
-![The flip: LOOKS TRUE stamped in green, OVERTURNED stamped across it in red at an angle,
-BUSTED beside it, and both queries side by side with the added `department` column
-highlighted.](docs/screenshots/02-the-flip.png)
+![The flip: OVERTURNED stamped across the first warrant in red, WARRANT Nº 2 marked BUSTED
+beside it with the added `department` column highlighted, and the result strip pinned
+between them.](docs/screenshots/03-the-flip.png)
 
 *The same claim, a fairer query, and the verdict turning over. Both queries carry the same
 conversation id — the follow-up continued the exchange rather than starting a new one.*
