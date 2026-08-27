@@ -455,6 +455,14 @@ def render_board(
         }}
         if (bh) f.style.height = Math.ceil(boardNeed + chrome) + 'px';
       }}
+      // Growing the iframe is not enough: Streamlit's element container around it keeps
+      // the height Python asked for, the page lays the desk out at THAT height, and the
+      // desk band paints over the board's overhang — cropped from outside while every
+      // measurement inside the frame reads clean. The container has to follow.
+      var c = f.parentElement;
+      if (c && c.getAttribute('data-testid') === 'stElementContainer') {{
+        c.style.height = f.style.height;
+      }}
     }} catch (err) {{ /* cross-origin: keep the height Python asked for */ }}
   }}
   function settle() {{ fit(); strings(); }}
